@@ -285,9 +285,15 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+        elif isinstance(error, commands.CommandInvokeError) and isinstance(error.original, AttributeError) and error.original.args[0] == "'NoneType' object has no attribute 'mention'":
+            embed = discord.Embed(
+                title="Error!",
+                description="You need to mention a user!",
+                color=0xE02B2B,
+            )
+            await context.send(embed=embed)
         else:
             raise error
-
 
 load_dotenv()
 

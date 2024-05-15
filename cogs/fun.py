@@ -196,7 +196,10 @@ class Fun(commands.Cog, name="fun"):
     @commands.hybrid_command(
         name="slap", description="Slap someone."
     )
-    async def slap(self, context: Context, user=discord.member) -> None:
+    @app_commands.describe(
+        user="The user to slap."
+    )
+    async def slap(self, context: Context, user: discord.Member = None) -> None:
         """
         Slap someone.
 
@@ -210,10 +213,17 @@ class Fun(commands.Cog, name="fun"):
         ]
 
         slap_messages = [
-            "Ouch!",
-            "wtheck...",
-            "wtflip!!!"
+            f"<@{context.author.id}> Slapped <@{user.id}>, ouch!",
+            f"<@{context.author.id}> Slapped <@{user.id}>, wtheck...",
+            f"<@{context.author.id}> Slapped <@{user.id}>, wtflip!!!"
         ]
+
+        embed = discord.Embed()
+        embed.set_image(url=random.choice(slap_array))
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(random.choice(slap_messages))
+        await context.send(embed=embed)
+
 
 
 async def setup(bot) -> None:

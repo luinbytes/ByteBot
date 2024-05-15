@@ -44,6 +44,9 @@ class Utilities(commands.Cog, name="utilities"):
         name="userinfo",
         description="Get information about a user"
     )
+    @app_commands.describe(
+        user="The user to get the info from."
+    )
     async def userinfo(self, context: Context, user: discord.Member = None) -> None:
         """
         Get information about a user.
