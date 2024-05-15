@@ -193,6 +193,28 @@ class Fun(commands.Cog, name="fun"):
         view = RockPaperScissorsView()
         await context.send("Please make your choice", view=view)
 
+    @commands.hybrid_command(
+        name="slap", description="Slap someone."
+    )
+    async def slap(self, context: Context, user=discord.member) -> None:
+        """
+        Slap someone.
+
+        :param context: The hybrid command context.
+        :param user: The user to slap.
+        """
+        slap_array = [
+            "https://media1.tenor.com/m/W2QqtV4k6ykAAAAd/orange-cat-cat-hitting-cat.gif",
+            "https://media1.tenor.com/m/bblihRQawfsAAAAC/kitty-slap-kat-slap.gif",
+            "https://media1.tenor.com/m/KjImwF1A5dYAAAAC/cat-kitty.gif"
+        ]
+
+        slap_messages = [
+            "Ouch!",
+            "wtheck...",
+            "wtflip!!!"
+        ]
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Fun(bot))

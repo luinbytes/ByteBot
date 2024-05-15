@@ -1,7 +1,5 @@
 import platform
-import random
 
-import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -46,8 +44,7 @@ class General(commands.Cog, name="general"):
 
     # User context menu command
     async def grab_id(
-        self, interaction: discord.Interaction, user: discord.User
-    ) -> None:
+        self, interaction: discord.Interaction, user: discord.User) -> None:
         """
         Grabs the ID of the user.
 
@@ -58,6 +55,7 @@ class General(commands.Cog, name="general"):
             description=f"The ID of {user.mention} is `{user.id}`.",
             color=0xBEBEFE,
         )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(
@@ -81,6 +79,7 @@ class General(commands.Cog, name="general"):
             embed.add_field(
                 name=i.capitalize(), value=f"```{help_text}```", inline=False
             )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
     @commands.hybrid_command(
@@ -107,7 +106,7 @@ class General(commands.Cog, name="general"):
             value=f"/ (Slash Commands) or {self.bot.config['prefix']} for normal commands",
             inline=False,
         )
-        embed.set_footer(text=f"Requested by {context.author}")
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
     @commands.hybrid_command(
@@ -138,7 +137,8 @@ class General(commands.Cog, name="general"):
             name="Text/Voice Channels", value=f"{len(context.guild.channels)}"
         )
         embed.add_field(name=f"Roles ({len(context.guild.roles)})", value=roles)
-        embed.set_footer(text=f"Created at: {context.guild.created_at}")
+        embed.add_field(name="Created At", value=f"{context.guild.created_at}")
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
     @commands.hybrid_command(
@@ -156,6 +156,7 @@ class General(commands.Cog, name="general"):
             description=f"The bot latency is {round(self.bot.latency * 1000)}ms.",
             color=0xBEBEFE,
         )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
     @commands.hybrid_command(
@@ -169,9 +170,11 @@ class General(commands.Cog, name="general"):
         :param context: The hybrid command context.
         """
         embed = discord.Embed(
+            title=f"Invite {self.bot.config['bot_name']}",
             description=f"Invite me by clicking [here]({self.bot.config['invite_link']}).",
             color=0xD75BF4,
         )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         try:
             await context.author.send(embed=embed)
             await context.send("I sent you a private message!")
@@ -193,6 +196,7 @@ class General(commands.Cog, name="general"):
             description=f"Join the support server for the bot by clicking [here](https://discord.gg/qvXZggKKnJ).",
             color=0xD75BF4,
         )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         try:
             await context.author.send(embed=embed)
             await context.send("I sent you a private message!")

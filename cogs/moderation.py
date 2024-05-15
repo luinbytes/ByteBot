@@ -362,6 +362,27 @@ class Moderation(commands.Cog, name="moderation"):
         await context.send(file=f)
         os.remove(log_file)
 
+    @commands.hybrid_command(
+        name="purge",
+        description="Deletes a user selected amount of messages from the current channel.",
+    )
+    @commands.has_permissions(manage_messages=True)
+    @app_commands.describe(
+        amount="The amount of messages that should be deleted. The maximum amount of messages that can be deleted is 100."
+    )
+    async def purge(self, context: Context, amount: int) -> None:
+        """
+        Purges a number of messages.
+        """
+        if 0 < amount <= 100:
+            await context.channel.purge(limit=amount + 1)
+            embed = discord.Embed(
+                description=f"**{context.author}** cleared **{amount}** messages!",
+                color=0xBEBEFE,
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Moderation(bot))

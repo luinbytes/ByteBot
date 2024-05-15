@@ -2,6 +2,7 @@ import aiohttp
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
+from discord import app_commands
 
 class Utilities(commands.Cog, name="utilities"):
     def __init__(self, bot) -> None:
@@ -48,8 +49,11 @@ class Utilities(commands.Cog, name="utilities"):
         Get information about a user.
 
         :param context: The hybrid command context.
-        :param user: The user to get information about.
+        :param user: The user to get the info from.
         """
+        if user is None:
+            user = context.author
+        
         embed = discord.Embed(
             title=f"{user.name}",
             description=f"ID: {user.id}",
@@ -65,9 +69,13 @@ class Utilities(commands.Cog, name="utilities"):
         embed.set_thumbnail(url=user.avatar)
         await context.send(embed=embed)
 
+
     @commands.hybrid_command(
         name="avatar",
         description="Get the avatar of a user"
+    )
+    @app_commands.describe(
+        user="The user to get the avatar of."
     )
     async def avatar(self, context: Context, user: discord.Member = None) -> None:
         """
@@ -76,14 +84,21 @@ class Utilities(commands.Cog, name="utilities"):
         :param context: The hybrid command context.
         :param user: The user to get the avatar of.
         """
-        embed = discord.Embed(
-            title=f"{user.name}'s avatar",
-            color=0xBEBEFE,
-        )
-        embed.add_field(name="", value=f"[Open in browser]({user.avatar.url})", inline=False)
-        embed.set_image(url=user.avatar)
-        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        embed = discord.Embed(color=0xBEBEFE)
+        
+        if user:
+            embed.title = f"{user.name}'s avatar"
+            embed.add_field(name="", value=f"[Open in browser]({user.avatar.url})", inline=False)
+            embed.set_image(url=user.avatar)
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        else:
+            embed.title = "Your Avatar"
+            embed.add_field(name="", value=f"[Open in browser]({context.author.avatar.url})", inline=False)
+            embed.set_image(url=context.author.avatar)
+            embed.set_footer(text="Requested by yourself", icon_url=context.author.avatar)
+
         await context.send(embed=embed)
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Utilities(bot))
