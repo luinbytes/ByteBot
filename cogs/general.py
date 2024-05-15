@@ -55,7 +55,7 @@ class General(commands.Cog, name="general"):
             description=f"The ID of {user.mention} is `{user.id}`.",
             color=0xBEBEFE,
         )
-        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar) # type: ignore
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(
@@ -93,13 +93,18 @@ class General(commands.Cog, name="general"):
         :param context: The hybrid command context.
         """
         embed = discord.Embed(
-            description="Used [Krypton's](https://krypton.ninja) template",
+            description="Made by @0x6c75",
             color=0xBEBEFE,
         )
         embed.set_author(name="Bot Information")
         embed.add_field(name="Owner:", value="@0x6c75", inline=True)
         embed.add_field(
             name="Python Version:", value=f"{platform.python_version()}", inline=True
+        )
+        embed.add_field(
+            name="Discord.py Version:",
+            value=f"{discord.__version__}",
+            inline=True,
         )
         embed.add_field(
             name="Prefix:",
