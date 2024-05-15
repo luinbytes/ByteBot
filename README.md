@@ -1,0 +1,2 @@
+# ByteBot
+ Personal Discord Bot
