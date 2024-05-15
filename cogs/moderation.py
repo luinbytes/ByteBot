@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import json
 
 import discord
 from discord import app_commands
@@ -10,6 +11,22 @@ from discord.ext.commands import Context
 class Moderation(commands.Cog, name="moderation"):
     def __init__(self, bot) -> None:
         self.bot = bot
+
+    async def load_config(self):
+        try:
+            with open('config.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+    async def save_config(self, config):
+        with open('config.json', 'w') as f:
+            json.dump(config, f, indent=4)
+
+    async def update_autorole_config(self, guild_id, role_id):
+        config = await self.load_config()
+        config[str(guild_id)] = role_id
+        await self.save_config(config)
 
     @commands.hybrid_command(
         name="kick",
@@ -382,6 +399,33 @@ class Moderation(commands.Cog, name="moderation"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="autorole",
+        description="Sets the role to grant users on server join."
+    )
+    @commands.has_permissions(administrator=True)
+    async def autorole(self, context: Context, role: discord.Role):
+        await self.update_autorole_config(context.guild.id, role.id)
+        
+        for member in context.guild.members:
+            if not member.bot:
+                await member.add_roles(role)
+
+        embed = discord.Embed(
+            title="Autorole Set",
+            description=f"The autorole has been set to {role.mention}."
+        )
+        await context.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        config = await self.load_config()
+        autorole_id = config.get(str(member.guild.id))
+        if autorole_id:
+            role = member.guild.get_role(autorole_id)
+            if role:
+                await member.add_roles(role)
 
 
 async def setup(bot) -> None:
