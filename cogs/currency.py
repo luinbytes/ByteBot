@@ -34,11 +34,11 @@ class Currency(commands.Cog, name="currency"):
 
     @commands.hybrid_command(
         name="roll",
-        description="Roll for a daily reward!",
+        description="Roll for a reward!",
     )
     async def roll(self, context: Context) -> None:
         """
-        This command allows users to roll the dice for a daily reward.
+        This command allows users to roll the dice for a reward.
 
         :param context: The application command context.
         """
@@ -55,7 +55,7 @@ class Currency(commands.Cog, name="currency"):
                 c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (current_time.strftime("%Y-%m-%d %H:%M:%S"), user_id))
                 conn.commit()
                 embed = discord.Embed(
-                    title="Daily Reward",
+                    title="Coin Reward",
                     description=f"You rolled the dice and earned {earnings} coins.",
                     color=discord.Color.green()
                 )
@@ -66,7 +66,7 @@ class Currency(commands.Cog, name="currency"):
                 hours, remainder = divmod(time_remaining.seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 embed = discord.Embed(
-                    title="Daily Reward",
+                    title="Coin Reward",
                     description=f"You can roll the dice again in {hours} hours, {minutes} minutes, and {seconds} seconds.",
                     color=discord.Color.red()
                 )
@@ -142,6 +142,21 @@ class Currency(commands.Cog, name="currency"):
         :param user: The user to send coins to.
         :param amount: The amount of coins to send.
         """
+        sender_id = context.author.id
+
+        # Check if sender is registered
+        c.execute("SELECT user_id FROM users WHERE user_id = ?", (sender_id,))
+        sender_data = c.fetchone()
+        if not sender_data:
+            embed = discord.Embed(
+                title="Sender Not Registered",
+                description="You are not registered to send coins.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
         if amount <= 0:
             embed = discord.Embed(
                 title="Invalid Amount",
@@ -162,16 +177,39 @@ class Currency(commands.Cog, name="currency"):
             await context.send(embed=embed)
             return
 
-        sender_id = context.author.id
-        recipient_id = user.id
-
         # Check if sender has enough balance
         c.execute("SELECT balance FROM users WHERE user_id = ?", (sender_id,))
-        sender_balance = c.fetchone()[0]
+        sender_balance_data = c.fetchone()
+        if sender_balance_data is None:
+            embed = discord.Embed(
+                title="Error",
+                description="Failed to retrieve sender balance data.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        sender_balance = sender_balance_data[0]
         if sender_balance < amount:
             embed = discord.Embed(
                 title="Insufficient Balance",
                 description="You don't have enough coins to send.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        recipient_id = user.id
+
+        # Check if recipient is registered
+        c.execute("SELECT user_id FROM users WHERE user_id = ?", (recipient_id,))
+        recipient_data = c.fetchone()
+        if not recipient_data:
+            embed = discord.Embed(
+                title="Recipient Not Registered",
+                description="The recipient is not registered to receive coins.",
                 color=discord.Color.red()
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
@@ -192,6 +230,7 @@ class Currency(commands.Cog, name="currency"):
         )
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
+
 
 @commands.Cog.listener()
 async def on_disconnect(self, member):
