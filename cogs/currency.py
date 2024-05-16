@@ -130,6 +130,78 @@ class Currency(commands.Cog, name="currency"):
             await context.send(embed=embed)
 
     @commands.hybrid_command(
+    name="gamble",
+    description="Gamble a specified amount of currency.",
+    usage="<amount>"
+    )
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    async def gamble(self, context: Context, amount: int) -> None:
+        """
+        This command allows users to gamble a specified amount of currency.
+
+        :param context: The application command context.
+        :param amount: The amount of currency to gamble.
+        """
+        user_id = context.author.id
+
+        # Check if user is registered
+        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        user_data = c.fetchone()
+        if not user_data:
+            embed = discord.Embed(
+                title="User Not Registered",
+                description="You are not registered to gamble.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        balance = user_data[0]
+
+        if amount <= 0:
+            embed = discord.Embed(
+                title="Invalid Amount",
+                description="You can only gamble a positive amount of currency.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        if amount > balance:
+            embed = discord.Embed(
+                title="Insufficient Balance",
+                description="You don't have enough currency to gamble.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        # Perform gamble
+        result = random.choice(["win", "lose"])
+        if result == "win":
+            winnings = amount * 2
+            c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
+            conn.commit()
+            message = f"You won {winnings} coins!"
+            color = discord.Color.green()
+        else:
+            c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
+            conn.commit()
+            message = f"You lost {amount} coins!"
+            color = discord.Color.red()
+
+        embed = discord.Embed(
+            title="Gamble Result",
+            description=message,
+            color=color
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(
         name="send",
         description="Send coins to another user.",
         usage="<@user> <amount>",
@@ -231,6 +303,46 @@ class Currency(commands.Cog, name="currency"):
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="addcurr",
+        description="Add a currency to a user's balance.",
+        usage="<@user> <amount>"
+    )
+    @commands.has_permissions(administrator=True)
+    async def addcurr(self, context: Context, user: discord.User, amount: int) -> None:
+        """
+        This command allows administrators to add currency to a user's balance.
+
+        :param context: The application command context.
+        :param user: The user to add currency to.
+        :param amount: The amount of currency to add.
+        """
+        user_id = user.id
+
+        # Check if user is registered
+        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        user_data = c.fetchone()
+        if not user_data:
+            embed = discord.Embed(
+                title="User Not Registered",
+                description="The specified user is not registered.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        # Update user's balance
+        c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+        conn.commit()
+
+        embed = discord.Embed(
+            title="Currency Added",
+            description=f"{amount} coins have been added to {user.display_name}'s balance.",
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
 
 @commands.Cog.listener()
 async def on_disconnect(self, member):
