@@ -103,20 +103,25 @@ class Currency(commands.Cog, name="currency"):
         name="balance",
         description="Check your current balance.",
     )
-    async def balance(self, context: Context) -> None:
+    async def balance(self, context: Context, user: discord.User = None) -> None:
         """
         This command allows users to check their current balance.
 
         :param context: The application command context.
+        :param user: The user whose balance is to be checked (optional).
         """
-        user_id = context.author.id
+        if user is None:
+            user = context.author
+        
+        user_id = user.id
         c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
         result = c.fetchone()
+        
         if result:
             balance = result[0]
             embed = discord.Embed(
                 title="Balance",
-                description=f"Your current balance is {balance} coins.",
+                description=f"{user.name}'s current balance is {balance} coins.",
                 color=discord.Color.green()
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
@@ -124,7 +129,7 @@ class Currency(commands.Cog, name="currency"):
         else:
             embed = discord.Embed(
                 title="Balance",
-                description=f"You haven't registered yet. Use the `{context.prefix}roll` command to start earning coins!",
+                description=f"{user.name} hasn't registered yet.",
                 color=discord.Color.red()
             )
             await context.send(embed=embed)
