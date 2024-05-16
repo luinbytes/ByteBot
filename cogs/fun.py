@@ -209,13 +209,16 @@ class Fun(commands.Cog, name="fun"):
         slap_array = [
             "https://media1.tenor.com/m/W2QqtV4k6ykAAAAd/orange-cat-cat-hitting-cat.gif",
             "https://media1.tenor.com/m/bblihRQawfsAAAAC/kitty-slap-kat-slap.gif",
-            "https://media1.tenor.com/m/KjImwF1A5dYAAAAC/cat-kitty.gif"
+            "https://media1.tenor.com/m/KjImwF1A5dYAAAAC/cat-kitty.gif",
+            "https://media1.tenor.com/m/_7kB0uF03_sAAAAd/cat-slap-slap-cat.gif",
+            "https://media1.tenor.com/m/ucAVz13QYXsAAAAd/cats-slap-cat.gif"
         ]
 
         slap_messages = [
             f"<@{context.author.id}> Slapped <@{user.id}>, ouch!",
             f"<@{context.author.id}> Slapped <@{user.id}>, wtheck...",
-            f"<@{context.author.id}> Slapped <@{user.id}>, wtflip!!!"
+            f"<@{context.author.id}> Slapped <@{user.id}>, wtflip!!!",
+            f"<@{context.author.id}> Slapped <@{user.id}>, get some ice..."
         ]
 
         embed = discord.Embed()
