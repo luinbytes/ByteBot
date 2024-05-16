@@ -72,6 +72,9 @@ class Currency(commands.Cog, name="currency"):
                 )
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 await context.send(embed=embed)
+        else:
+            # Automatically register user and roll for them
+            await self.register_user(context)
 
     async def register_user(self, context: Context) -> None:
         """
