@@ -6,6 +6,7 @@ import os
 import sqlite3
 import random
 import math
+import asyncio
 from datetime import datetime, timedelta
 
 # Ensure database directory exists
@@ -65,7 +66,7 @@ class Currency(commands.Cog, name="currency"):
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 await context.send(embed=embed)
             else:
-                time_remaining = timedelta(seconds=10800) - (current_time - last_roll_date)
+                time_remaining = timedelta(seconds=3600) - (current_time - last_roll_date)
                 hours, remainder = divmod(time_remaining.seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 embed = discord.Embed(
@@ -77,9 +78,9 @@ class Currency(commands.Cog, name="currency"):
                 await context.send(embed=embed)
         else:
             # Automatically register user and roll for them
-            await self.register_user(context)
+            await self.register_user_roll(context)
 
-    async def register_user(self, context: Context) -> None:
+    async def register_user_roll(self, context: Context) -> None:
         """
         This function registers a new user and rolls the dice for them.
 
@@ -101,6 +102,136 @@ class Currency(commands.Cog, name="currency"):
         )
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
+
+    async def register_user_hol(self, context: Context) -> None:
+        """
+        This function registers a new user.
+
+        :param context: The application command context.
+        """
+        user_id = context.author.id
+        c.execute("INSERT INTO users (user_id, username) VALUES (?, ?)", (user_id, str(context.author)))
+        conn.commit()
+
+    @commands.hybrid_command(
+        name="highlow",
+        description="Play the higher or lower gambling game!",
+        aliases=["hol", "higherlower"]
+    )
+    async def higherlower(self, context: Context) -> None:
+        """
+        Play the higher or lower gambling game.
+
+        :param context: The application command context.
+        """
+        user_id = context.author.id
+        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        result = c.fetchone()
+        if not result:
+            await self.register_user(context)
+
+        balance = result[0] if result else 0
+
+        if balance <= 0:
+            embed = discord.Embed(
+            title="Higher or Lower!",
+            description=f"You don't have enough coins to play.",
+            color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        embed = discord.Embed(
+            title="Higher or Lower!",
+            description=f"You currently have {balance} coins.",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Betting open.", value="Please enter a bet amount...", inline=True)
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
+
+
+        def check(message):
+            return message.author == context.author and message.channel == context.channel and message.content.isdigit()
+
+        try:
+            message = await self.bot.wait_for('message', timeout=30.0, check=check)
+            bet_amount = int(message.content)
+            if bet_amount > balance:
+                embed = discord.Embed(
+                    title="Higher or Lower!",
+                    description="You don't have enough coins for that bet.",
+                    color=discord.Color.red()
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+                return
+
+            number = random.randint(1, 20)
+            embed = discord.Embed(
+                title="Higher or Lower!",
+                description=f"Guess if the next number will be higher or lower than {number} (h/l):",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+
+            def higher_lower_check(message):
+                return message.author == context.author and message.channel == context.channel and message.content.lower() in ['h', 'l']
+
+            try:
+                guess_message = await self.bot.wait_for('message', timeout=30.0, check=higher_lower_check)
+                guess = guess_message.content.lower()
+
+                next_number = random.randint(1, 20)
+                embed = discord.Embed(
+                    title="Higher or Lower!",
+                    description=f"The next number is: {next_number}",
+                    color=discord.Color.blue()
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+
+                if (next_number > number and guess == 'h') or (next_number < number and guess == 'l'):
+                    winnings = math.floor(bet_amount * 1.2)
+                    embed = discord.Embed(
+                        title="Higher or Lower!",
+                        description="Congratulations! You guessed correctly. You won {} coins.".format(winnings),
+                        color=discord.Color.green()
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                    c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
+                    conn.commit()
+                else:
+                    embed = discord.Embed(
+                        title="Higher or Lower!",
+                        description=f"Sorry, you guessed incorrectly. The correct number was {number}. You lost {bet_amount} coins.",
+                        color=discord.Color.red()
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                    c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, user_id))
+                    conn.commit()
+
+            except asyncio.TimeoutError:
+                embed = discord.Embed(
+                    title="Higher or Lower!",
+                    description="You took too long to guess. The game has ended.",
+                    color=discord.Color.red()
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+
+        except asyncio.TimeoutError:
+            embed = discord.Embed(
+                title="Higher or Lower!",
+                description="You took too long to respond. The game has ended.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="balance",
@@ -309,7 +440,7 @@ class Currency(commands.Cog, name="currency"):
         conn.commit()
         embed = discord.Embed(
             title="Coins Sent",
-            description=f"You have sent {amount} coins to {user.display_name}.",
+            description=f"You have sent {amount} coins to {user.mention}.",
             color=discord.Color.green()
         )
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)

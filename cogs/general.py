@@ -59,28 +59,42 @@ class General(commands.Cog, name="general"):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(
-        name="help", description="List all commands the bot has loaded."
+        name="help",
+        description="List all commands the bot has loaded or show commands in a specific category.",
     )
-    async def help(self, context: Context) -> None:
+    async def help(self, context: Context, category: str = None) -> None:
         prefix = self.bot.config["prefix"]
         embed = discord.Embed(
-            title="Help", description="List of available commands:", color=0xBEBEFE
+            title="Help", description="List of available categories:", color=0xBEBEFE
         )
-        for i in self.bot.cogs:
-            if i == "owner" and not (await self.bot.is_owner(context.author)):
+        embed.add_field(name=f"Use {prefix}help <category> to see commands", value="", inline=False)
+        for cog_name in self.bot.cogs:
+            if cog_name == "owner" and not (await self.bot.is_owner(context.author)):
                 continue
-            cog = self.bot.get_cog(i.lower())
-            commands = cog.get_commands()
-            data = []
-            for command in commands:
-                description = command.description.partition("\n")[0]
-                data.append(f"{prefix}{command.name} - {description}")
-            help_text = "\n".join(data)
-            embed.add_field(
-                name=i.capitalize(), value=f"```{help_text}```", inline=False
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-        await context.send(embed=embed)
+            embed.add_field(name="", value=cog_name.capitalize(), inline=False)
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        
+        if category:
+            category_lower = category.lower()
+            cog = self.bot.get_cog(category_lower)
+            if cog:
+                commands = cog.get_commands()
+                data = []
+                for command in commands:
+                    description = command.description.partition("\n")[0]
+                    data.append(f"{prefix}{command.name} - {description}")
+                help_text = "\n".join(data)
+                category_embed = discord.Embed(
+                    title=f"{category.capitalize()} Commands",
+                    description=f"```{help_text}```",
+                    color=0xBEBEFE
+                )
+                category_embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=category_embed)
+            else:
+                await context.send("Invalid category. Please use !help to see available categories.")
+        else:
+            await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="botinfo",
