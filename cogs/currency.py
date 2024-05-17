@@ -49,7 +49,7 @@ class Currency(commands.Cog, name="currency"):
         if result:
             last_roll_date = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S") if result[0] else datetime.min
             current_time = datetime.now()
-            if (current_time - last_roll_date).total_seconds() >= 10800:  # 3 hours in seconds
+            if (current_time - last_roll_date).total_seconds() >= 3600:  # 1 hour in seconds
                 # Roll dice
                 earnings = random.randint(5, 250)
                 c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
@@ -142,6 +142,7 @@ class Currency(commands.Cog, name="currency"):
     usage="<amount>",
     aliases=["bet"]
     )
+    @commands.describe(amount="The amount of currency to gamble. All winnings are 1.3x the amount.")
     @commands.cooldown(rate=1, per=10, type=commands.BucketType.user)
     async def gamble(self, context: Context, amount: int) -> None:
         """
@@ -190,7 +191,7 @@ class Currency(commands.Cog, name="currency"):
         # Perform gamble
         result = random.choice(["win", "lose"])
         if result == "win":
-            winnings = amount * 2
+            winnings = amount * 1.3
             c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
             conn.commit()
             message = f"You won {winnings} coins!"
