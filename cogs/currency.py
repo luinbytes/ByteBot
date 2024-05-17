@@ -1,5 +1,6 @@
 from discord.ext import commands
 from discord.ext.commands import Context
+from discord import app_commands
 import discord
 import os
 import sqlite3
@@ -142,7 +143,7 @@ class Currency(commands.Cog, name="currency"):
     usage="<amount>",
     aliases=["bet"]
     )
-    @commands.describe(amount="The amount of currency to gamble. All winnings are 1.3x the amount.")
+    @app_commands.describe(amount="The amount of currency to gamble. All winnings are 1.3x the amount.")
     @commands.cooldown(rate=1, per=10, type=commands.BucketType.user)
     async def gamble(self, context: Context, amount: int) -> None:
         """
