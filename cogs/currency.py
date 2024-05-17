@@ -5,6 +5,7 @@ import discord
 import os
 import sqlite3
 import random
+import math
 from datetime import datetime, timedelta
 
 # Ensure database directory exists
@@ -192,7 +193,7 @@ class Currency(commands.Cog, name="currency"):
         # Perform gamble
         result = random.choice(["win", "lose"])
         if result == "win":
-            winnings = amount * 1.3
+            winnings = math.floor(amount * 1.3)
             c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
             conn.commit()
             message = f"You won {winnings} coins!"
