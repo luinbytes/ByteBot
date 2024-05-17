@@ -16,6 +16,8 @@ class Memes(commands.Cog, name="memes"):
     @commands.hybrid_command(
         name="memerandom",
         description="Grabs a random meme from meme-api.com",
+        aliases=["mr"],
+        usage="memerandom"
     )
     async def memerandom(self, context: Context) -> None:
         async with aiohttp.ClientSession() as session:

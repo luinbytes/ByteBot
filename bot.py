@@ -292,6 +292,14 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+        elif isinstance(error, commands.CommandNotFound):
+            embed = discord.Embed(
+                title="Error!",
+                description="Command not found!",
+                color=0xE02B2B,
+            )
+            await context.send(embed=embed)
+            raise(error)
         else:
             raise error
 

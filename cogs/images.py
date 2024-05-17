@@ -10,6 +10,8 @@ class Images(commands.Cog, name="images"):
     @commands.hybrid_command(
         name="cat",
         description="Spawns a random cat! Big thanks to The Cat API!",
+        usage="cat",
+        aliases=["kitty", "car"]
     )
     async def cat(self, context: Context) -> None:
         async with aiohttp.ClientSession() as session:

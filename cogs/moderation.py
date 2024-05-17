@@ -427,6 +427,53 @@ class Moderation(commands.Cog, name="moderation"):
             if role:
                 await member.add_roles(role)
 
+    @commands.hybrid_command(
+        name="addalias",
+        description="Adds an alias from a command.",
+    )
+    @commands.has_permissions(administrator=True)
+    async def addalias(self, ctx, command_name: str, alias: str):
+        """
+        Adds an alias for a command.
+        
+        :param command_name: The name of the command to alias.
+        :param alias: The alias to add.
+        """
+        command = self.bot.get_command(command_name)
+        if command:
+            # Check if the alias already exists for the command
+            if alias in command.aliases:
+                await ctx.send(f"The alias '{alias}' already exists for the command '{command_name}'.")
+                return
+            # Add the alias to the command
+            command.aliases.append(alias)
+            await ctx.send(f"Alias '{alias}' added for command '{command_name}'.")
+        else:
+            await ctx.send(f"Command '{command_name}' not found.")
+
+    @commands.hybrid_command(
+        name="rmalias",
+        description="Removes an alias from a command.",
+    )
+    @commands.has_permissions(administrator=True)
+    async def rmalias(self, ctx, command_name: str, alias: str):
+        """
+        Removes an alias from a command.
+        
+        :param command_name: The name of the command to remove the alias from.
+        :param alias: The alias to remove.
+        """
+        command = self.bot.get_command(command_name)
+        if command:
+            # Check if the alias exists for the command
+            if alias in command.aliases:
+                command.aliases.remove(alias)
+                await ctx.send(f"Alias '{alias}' removed from command '{command_name}'.")
+            else:
+                await ctx.send(f"Alias '{alias}' not found for command '{command_name}'.")
+        else:
+            await ctx.send(f"Command '{command_name}' not found.")
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Moderation(bot))

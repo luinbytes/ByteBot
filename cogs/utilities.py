@@ -11,6 +11,7 @@ class Utilities(commands.Cog, name="utilities"):
     @commands.hybrid_command(
         name="bitcoin",
         description="Get the current price of bitcoin.",
+        aliases=["btc"]
     )
     async def bitcoin(self, context: Context) -> None:
         """
@@ -42,7 +43,9 @@ class Utilities(commands.Cog, name="utilities"):
 
     @commands.hybrid_command(
         name="userinfo",
-        description="Get information about a user"
+        description="Get information about a user",
+        usage="userinfo <@user>",
+        aliases=["user"]
     )
     @app_commands.describe(
         user="The user to get the info from."
@@ -75,7 +78,9 @@ class Utilities(commands.Cog, name="utilities"):
 
     @commands.hybrid_command(
         name="avatar",
-        description="Get the avatar of a user"
+        description="Get the avatar of a user",
+        usage="avatar <@user>",
+        aliases=["av"]
     )
     @app_commands.describe(
         user="The user to get the avatar of."
