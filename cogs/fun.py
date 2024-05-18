@@ -242,6 +242,41 @@ class Fun(commands.Cog, name="fun"):
         await context.send(random.choice(slap_messages))
         await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="randommeme",
+        description="Grabs a random meme from meme-api.com",
+        aliases=["meme", "rmeme"],
+        usage="memerandom"
+    )
+    async def randommeme(self, context: Context) -> None:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://meme-api.com/gimme/"
+            ) as request:
+                print(request.status)
+                if request.status == 200:
+                    data = await request.json()
+                    title = data.get("title", "No title available")
+                    author = data.get("author", "No author available")
+                    url = data.get("url", "")
+
+                    embed = discord.Embed(title="Random Meme", \
+                        color=0xD75BF4,
+                        description=f"[View Image]({url})"
+                    )
+                    embed.set_image(url=url)
+                    embed.add_field(name="Title", value=title, inline=False)
+                    embed.add_field(name="Author", value=author, inline=False)
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+
+                else:
+                    embed = discord.Embed(
+                        title="Error!",
+                        description="There is something wrong with the API, please try again later",
+                        color=0xE02B2B,
+                    )
+
 
 
 async def setup(bot) -> None:
