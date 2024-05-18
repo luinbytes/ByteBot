@@ -6,7 +6,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
-
+import sqlite3
+import re
 
 class Moderation(commands.Cog, name="moderation"):
     def __init__(self, bot) -> None:
@@ -25,7 +26,14 @@ class Moderation(commands.Cog, name="moderation"):
 
     async def update_autorole_config(self, guild_id, role_id):
         config = await self.load_config()
-        config[str(guild_id)] = role_id
+        config.setdefault("autorole", {})
+        config["autorole"][str(guild_id)] = str(role_id)
+        await self.save_config(config)
+
+    async def update_starboard_config(self, guild_id, channel_id):
+        config = await self.load_config()
+        config.setdefault("starboard", {})
+        config["starboard"][str(guild_id)] = str(channel_id)
         await self.save_config(config)
 
     @commands.hybrid_command(
@@ -428,51 +436,175 @@ class Moderation(commands.Cog, name="moderation"):
                 await member.add_roles(role)
 
     @commands.hybrid_command(
-        name="addalias",
-        description="Adds an alias from a command.",
+        name="starboard",
+        description="Sets the starboard channel for the server.",
+        usage="starboard <#channel>",
+        aliases=["starboardchannel", "sbchannel"]
     )
     @commands.has_permissions(administrator=True)
-    async def addalias(self, ctx, command_name: str, alias: str):
-        """
-        Adds an alias for a command.
-        
-        :param command_name: The name of the command to alias.
-        :param alias: The alias to add.
-        """
-        command = self.bot.get_command(command_name)
-        if command:
-            # Check if the alias already exists for the command
-            if alias in command.aliases:
-                await ctx.send(f"The alias '{alias}' already exists for the command '{command_name}'.")
-                return
-            # Add the alias to the command
-            command.aliases.append(alias)
-            await ctx.send(f"Alias '{alias}' added for command '{command_name}'.")
+    async def starboard(self, context: Context, channel: discord.TextChannel):
+        config = await self.load_config()
+        guild_config = config.get("starboard", {})
+        if guild_config.get(str(context.guild.id)) == str(channel.id):
+            embed = discord.Embed(
+                title="Starboard already set",
+                description=f"The starboard channel is already set to {channel.mention}.",
+                color=0xE02B2B
+            )
+            await context.send(embed=embed)
         else:
-            await ctx.send(f"Command '{command_name}' not found.")
+            await self.update_starboard_config(context.guild.id, channel.id)
+            embed = discord.Embed(
+                title="Starboard Channel Set",
+                description=f"The starboard channel has been set to {channel.mention}.",
+                color=0xBEBEFE
+            )
+            await context.send(embed=embed)
 
     @commands.hybrid_command(
-        name="rmalias",
-        description="Removes an alias from a command.",
+            name="sbreactionamount",
+            description="Sets the minimum amount of reactions needed to pin a message to the starboard.",
+            usage="sbreactionamount <amount>",
+            aliases=["starboardreactionamount", "sbreaction", "reactionamount", "sbreacts", "sbreact"]
     )
     @commands.has_permissions(administrator=True)
-    async def rmalias(self, ctx, command_name: str, alias: str):
-        """
-        Removes an alias from a command.
-        
-        :param command_name: The name of the command to remove the alias from.
-        :param alias: The alias to remove.
-        """
-        command = self.bot.get_command(command_name)
-        if command:
-            # Check if the alias exists for the command
-            if alias in command.aliases:
-                command.aliases.remove(alias)
-                await ctx.send(f"Alias '{alias}' removed from command '{command_name}'.")
-            else:
-                await ctx.send(f"Alias '{alias}' not found for command '{command_name}'.")
+    @app_commands.describe(
+        amount="The minimum amount of reactions needed to pin a message to the starboard."
+    )
+    async def sbreactionamount(self, context: Context, amount: int = None):
+        config = await self.load_config()
+        if amount is None:
+            current_amount = config.get("starboard_min_reactions")
+            embed = discord.Embed(
+                title="Current Starboard Reaction Amount",
+                description=f"The current minimum amount of reactions needed to pin a message to the starboard is `{current_amount}`.",
+                color=0xBEBEFE
+            )
+            await context.send(embed=embed)
         else:
-            await ctx.send(f"Command '{command_name}' not found.")
+            config["starboard_min_reactions"] = amount
+            await self.save_config(config)
+            embed = discord.Embed(
+                title="Starboard Reaction Amount Set",
+                description=f"The minimum amount of reactions needed to pin a message to the starboard has been set to `{amount}`.",
+                color=0xBEBEFE
+            )
+            await context.send(embed=embed)
+
+    async def award(self, user_id: int, coins: int) -> None:
+        """
+        This command allows users to be awarded coins. If the user is not registered, they are registered first.
+
+        :param user_id: The ID of the user to award coins to.
+        :param coins: The number of coins to award.
+
+        """
+        conn = sqlite3.connect("database/currency.db")
+        c = conn.cursor()
+        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        result = c.fetchone()
+        if result:
+            # User is registered, award coins
+            c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (coins, user_id))
+            conn.commit()
+        else:
+            # User is not registered, register them and award coins
+            user = self.bot.get_user(user_id)
+            username = user.name if user else "Unknown User"
+            c.execute("INSERT INTO users (user_id, username, balance) VALUES (?, ?, ?)", (user_id, username, coins))
+            conn.commit()
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        min_reactions = config.get('starboard_min_reactions')
+        if payload.emoji.name == "⭐":
+            channel = self.bot.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+            reaction = [react for react in message.reactions if str(react.emoji) == "⭐"][0]
+            if reaction and reaction.count >= min_reactions:
+                config = await self.load_config()
+                starboard_channel_id = config.get('starboard', {}).get(str(reaction.message.guild.id))
+                if starboard_channel_id:
+                    starboard_channel = reaction.message.guild.get_channel(int(starboard_channel_id))
+                    if starboard_channel:
+                        # Check if the message is already in the starboard
+                        starboard_messages = []
+                        async for message in starboard_channel.history():
+                            starboard_messages.append(message)
+                        if any(f"[Click here]({reaction.message.jump_url})" in embed.fields[0].value for message in starboard_messages for embed in message.embeds if embed.fields):
+                            return
+                        
+                        embed = discord.Embed(
+                            title="⭐ Pinned!",
+                            description=reaction.message.content,
+                            color=0xFFFF00,
+                        )
+                        embed.set_author(name=reaction.message.author.name, icon_url=reaction.message.author.avatar.url)
+                        embed.set_footer(text=f"Original message in #{reaction.message.channel.name}")
+                        embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})", inline=False)
+                        embed.add_field(name="Award", value="250 🪙", inline=True)
+
+                        # Check if the message content is a URL to an image
+                        url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+                        urls = re.findall(url_pattern, reaction.message.content)
+                        if urls:
+                            for url in urls:
+                                if url.endswith(('.png', '.jpg', '.gif')):
+                                    embed.set_image(url=url)
+                                    break
+
+                        if reaction.message.attachments:
+                            embed.set_image(url=reaction.message.attachments[0].url)
+
+                        await starboard_channel.send(embed=embed)
+                        message_id = payload.message_id
+                        channel_id = payload.channel_id
+                        guild_id = payload.guild_id
+
+                        # Fetch the message that was reacted to
+                        channel = self.bot.get_channel(channel_id)
+                        message = await channel.fetch_message(message_id)
+
+                        # Award coins to the user who sent the message
+                        user_id = message.author.id
+                        await self.award(user_id, coins=250)
+
+    @commands.hybrid_command(
+        name="verifystarboard",
+        description="Verifies the starboard channel for the server.",
+        usage="verifystarboard",
+        aliases=["verifyboard"]
+    )
+    @app_commands.describe(
+
+    )
+    @commands.has_permissions(administrator=True)
+    async def verifystarboard(self, context: Context):
+        config = await self.load_config()
+        starboard_channel_id = config.get('starboard', {}).get(str(context.guild.id))
+        if starboard_channel_id:
+            starboard_channel = context.guild.get_channel(int(starboard_channel_id))
+            if starboard_channel:
+                embed = discord.Embed(
+                    title="Starboard Channel Verified",
+                    description=f"The starboard channel is set to {starboard_channel.mention}.",
+                    color=0xBEBEFE
+                )
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="Starboard Channel Verification",
+                    description="The starboard channel is not set.",
+                    color=0xE02B2B
+                )
+                await context.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                title="Starboard Channel Verification",
+                description="The starboard channel is not set.",
+                color=0xE02B2B
+            )
+            await context.send(embed=embed)
 
 
 async def setup(bot) -> None:

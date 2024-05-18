@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord import app_commands
+from xml.etree import ElementTree as ET
 
 class Utilities(commands.Cog, name="utilities"):
     def __init__(self, bot) -> None:
@@ -107,6 +108,97 @@ class Utilities(commands.Cog, name="utilities"):
 
         await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="joinedat",
+        description="Get the date a user joined the server.",
+        usage="joinedat <@user>",
+        aliases=["joined", "joindate"]
+    )
+    @app_commands.describe(
+        user="The user to get the join date of."
+    )
+    async def joinedat(self, context: Context, user: discord.Member = None) -> None:
+        """
+        Get the date a user joined the server.
+
+        :param context: The hybrid command context.
+        :param user: The user to get the join date of.
+        """
+        if user is None:
+            user = context.author
+
+        embed = discord.Embed(
+            title=f"{user.name}",
+            description=f"Joined at {user.joined_at.strftime('%d/%m/%Y %H:%M:%S')}",
+            color=0xBEBEFE,
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        embed.set_thumbnail(url=user.avatar)
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="userid",
+        description="Get the ID of a user.",
+        usage="userid <@user>",
+        aliases=["uid", "id"]
+    )
+    @app_commands.describe(
+        user="The user to get the ID of."
+    )
+    async def userid(self, context: Context, user: discord.Member = None) -> None:
+        """
+        Get the ID of a user.
+
+        :param context: The hybrid command context.
+        :param user: The user to get the ID of.
+        """
+        if user is None:
+            user = context.author
+
+        embed = discord.Embed(
+            title=f"{user.name}",
+            description=f"ID: {user.id}",
+            color=0xBEBEFE,
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        embed.set_thumbnail(url=user.avatar)
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="listaliases",
+        description="List all available aliases for a command.",
+        usage="listaliases <command>",
+        aliases=["aliases"]
+    )
+    @app_commands.describe(
+        command="The command to list aliases for."
+    )
+    async def listaliases(self, context: Context, command: str) -> None:
+        """
+        List all available aliases for a command.
+
+        :param context: The hybrid command context.
+        :param command: The command to list aliases for.
+        """
+        cmd = self.bot.get_command(command)
+
+        if cmd is None:
+            await context.send(f"Command '{command}' not found.")
+            return
+
+        aliases = cmd.aliases
+
+        if not aliases:
+            await context.send(f"No aliases found for command '{command}'.")
+            return
+
+        embed = discord.Embed(
+            title=f"Aliases for '{command}'",
+            description=" - ".join(f"`{alias}`" for alias in aliases),
+            color=0xBEBEFE
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)  
 
 async def setup(bot) -> None:
     await bot.add_cog(Utilities(bot))

@@ -118,8 +118,8 @@ class Currency(commands.Cog, name="currency"):
 
     @commands.hybrid_command(
         name="roll",
-        description="Roll for a reward!",
-        aliases=["r"]
+        description="🪙 Roll for a reward!",
+        aliases=["r", "dice", "diceroll", "rolldice", "rtd", "rollthedice"]
     )
     async def roll(self, context: Context) -> None:
         """
@@ -140,8 +140,8 @@ class Currency(commands.Cog, name="currency"):
                 c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (current_time.strftime("%Y-%m-%d %H:%M:%S"), user_id))
                 conn.commit()
                 embed = discord.Embed(
-                    title="Coin Reward",
-                    description=f"You rolled the dice and earned {earnings} coins.",
+                    title="🪙 Coin Reward",
+                    description=f"You rolled the dice and earned {earnings} coins!",
                     color=discord.Color.green()
                 )
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
@@ -151,7 +151,7 @@ class Currency(commands.Cog, name="currency"):
                 hours, remainder = divmod(time_remaining.seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 embed = discord.Embed(
-                    title="Coin Reward",
+                    title="🪙 Coin Reward",
                     description=f"You can roll the dice again in {hours} hours, {minutes} minutes, and {seconds} seconds.",
                     color=discord.Color.red()
                 )
@@ -177,8 +177,8 @@ class Currency(commands.Cog, name="currency"):
         c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id))
         conn.commit()
         embed = discord.Embed(
-            title="Daily Reward",
-            description=f"You rolled the dice and earned {earnings} coins.",
+            title="🪙 Coin Reward",
+            description=f"You rolled the dice and earned {earnings} coins!",
             color=discord.Color.green()
         )
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
@@ -278,7 +278,7 @@ class Currency(commands.Cog, name="currency"):
                     winnings = math.floor(bet_amount * 1.2)
                     embed = discord.Embed(
                         title="Higher or Lower!",
-                        description="Congratulations! You guessed correctly. You won {} coins.".format(winnings),
+                        description="Congratulations! You guessed correctly. You won {} coins! 🪙".format(winnings),
                         color=discord.Color.green()
                     )
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
@@ -336,7 +336,7 @@ class Currency(commands.Cog, name="currency"):
         if result:
             balance = result[0]
             embed = discord.Embed(
-                title="Balance",
+                title="🪙 Balance",
                 description=f"{user.mention}'s current balance is {balance} coins.",
                 color=discord.Color.green()
             )
@@ -376,6 +376,7 @@ class Currency(commands.Cog, name="currency"):
                 description="You are not registered to gamble.",
                 color=discord.Color.red()
             )
+            embed.add_field(name="How to register", value=f"Use the `{self.config["prefix"]}roll` command to register yourself in the currency database!", inline=False)
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
             return
@@ -408,7 +409,7 @@ class Currency(commands.Cog, name="currency"):
             winnings = math.floor(amount * 1.4)
             c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
             conn.commit()
-            message = f"You won {winnings} coins!"
+            message = f"🪙 You won {winnings} coins! 🪙"
             color = discord.Color.green()
         else:
             c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
@@ -521,7 +522,7 @@ class Currency(commands.Cog, name="currency"):
         c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, recipient_id))
         conn.commit()
         embed = discord.Embed(
-            title="Coins Sent",
+            title="🪙 Coins Sent",
             description=f"You have sent {amount} coins to {user.mention}.",
             color=discord.Color.green()
         )
@@ -560,7 +561,7 @@ class Currency(commands.Cog, name="currency"):
         conn.commit()
 
         embed = discord.Embed(
-            title="Currency Added",
+            title="🪙 Currency Added",
             description=f"{amount} coins have been added to {user.display_name}'s balance.",
             color=discord.Color.green()
         )
@@ -599,7 +600,7 @@ class Currency(commands.Cog, name="currency"):
         conn.commit()
 
         embed = discord.Embed(
-            title="Currency Removed",
+            title="🪙 Currency Removed",
             description=f"{amount} coins have been removed from {user.display_name}'s balance.",
             color=discord.Color.green()
         )
@@ -639,7 +640,7 @@ class Currency(commands.Cog, name="currency"):
         conn.commit()
 
         embed = discord.Embed(
-            title="Balance Reset",
+            title="🪙 Balance Reset",
             description=f"{user.display_name}'s balance has been reset to 0 coins.",
             color=discord.Color.green()
         )
@@ -680,7 +681,7 @@ class Currency(commands.Cog, name="currency"):
         conn.commit()
 
         embed = discord.Embed(
-            title="Balance Set",
+            title="🪙 Balance Set",
             description=f"{user.display_name}'s balance has been set to {amount} coins.",
             color=discord.Color.green()
         )
@@ -712,7 +713,7 @@ class Currency(commands.Cog, name="currency"):
 
         # Create the leaderboard embed
         embed = discord.Embed(
-            title="Leaderboard - Top 10 Users",
+            title="🪙 Leaderboard - Top 10 Users 🪙",
             description="Here are the top users with the highest balances:",
             color=discord.Color.gold()
         )
@@ -721,9 +722,9 @@ class Currency(commands.Cog, name="currency"):
         for idx, (user_id, balance) in enumerate(top_users, start=1):
             user = self.bot.get_user(user_id)
             if user:
-                embed.add_field(name=f"{idx}. {user.display_name}", value=f"{balance} coins", inline=False)
+                embed.add_field(name=f"{idx}. {user.display_name}", value=f"{balance} coins 🪙", inline=False)
             else:
-                embed.add_field(name=f"{idx}. User ID: {user_id}", value=f"{balance} coins", inline=False)
+                embed.add_field(name=f"{idx}. User ID: {user_id}", value=f"{balance} coins 🪙", inline=False)
 
         await context.send(embed=embed)
 
@@ -809,7 +810,7 @@ class Currency(commands.Cog, name="currency"):
                 bet_amount = int(bet_amount * 1.5)
                 c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
                 conn.commit()
-                result = ("Blackjack!", 'won')
+                result = ("🪙 Blackjack!", 'won')
                 break
             elif player_score > 21:
                 c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, context.author.id))
@@ -868,7 +869,7 @@ class Currency(commands.Cog, name="currency"):
             else:
                 c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
                 conn.commit()
-                result = ("You win!", 'won')
+                result = ("🪙 You win!", 'won')
 
         color = discord.Color.red() if result[1] == 'lost' else discord.Color.green() if result[1] == 'won' else discord.Color.blue()
         if msg:

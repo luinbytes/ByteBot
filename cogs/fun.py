@@ -246,7 +246,10 @@ class Fun(commands.Cog, name="fun"):
         name="randommeme",
         description="Grabs a random meme from meme-api.com",
         aliases=["meme", "rmeme"],
-        usage="memerandom"
+        usage="randommeme"
+    )
+    @app_commands.describe(
+
     )
     async def randommeme(self, context: Context) -> None:
         async with aiohttp.ClientSession() as session:
@@ -277,7 +280,86 @@ class Fun(commands.Cog, name="fun"):
                         color=0xE02B2B,
                     )
 
+    @commands.hybrid_command(
+        name="kanye",
+        description="Get a random Kanye West quote.",
+        aliases=["kanyewest", "kanyequote"],
+        usage="kanye"
+    )
+    @app_commands.describe(
 
+    )
+    @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
+    async def kanye(self, context: Context) -> None:
+        kanyarray = [
+            "https://media1.tenor.com/m/-OpJG9GeK3EAAAAC/kanye-west-stare.gif",
+            "https://media1.tenor.com/m/sPKTQ1DZpEYAAAAC/kanye-west-shrug.gif",
+            "https://media1.tenor.com/m/4qlYLATKhZoAAAAd/kanye-west.gif",
+            "https://media1.tenor.com/m/pXbU7RAcQ4MAAAAd/kawaii-kanye-west.gif",
+            "https://media1.tenor.com/m/0i0GFBYak7YAAAAd/fadsfantasy.gif",
+            "https://media1.tenor.com/m/m_iZNYP99PYAAAAd/luluca-epic-seven.gif",
+            "https://media1.tenor.com/m/1HTrLTSaWrcAAAAC/ye.gif",
+            "https://media1.tenor.com/m/Qo4mu6AXcuQAAAAC/kanye-west-moneybot.gif",
+            "https://media1.tenor.com/m/tso5-09N8voAAAAd/kanye-haircut.gif",
+            "https://media1.tenor.com/m/TLnxLfZh_HIAAAAC/ilikeit-janye.gif",
+            "https://media1.tenor.com/m/5GndSOFS1xYAAAAd/sus-kanye.gif",
+            "https://media1.tenor.com/m/5ovvk6FeZ2YAAAAd/bongocatsolana-bongosolana.gif"
+        ]
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://api.kanye.rest/"
+            ) as request:
+                if request.status == 200:
+                    data = await request.json()
+                    quote = data.get("quote", "No quote available")
+                    embed = discord.Embed(
+                        title="Kanye West Quote",
+                        description=quote,
+                        color=0xD75BF4
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    embed.set_image(url=random.choice(kanyarray))
+                    await context.send(embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="Error!",
+                        description="There is something wrong with the API, please try again later",
+                        color=0xE02B2B,
+                    )
+                    await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="chucknorris",
+        description="Get a random Chuck Norris fact.",
+        aliases=["norrisfact", "norris", "chuck"],
+        usage="chucknorris"
+    )
+    @app_commands.describe(
+
+    )
+    @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
+    async def chuck_norris(self, context: Context) -> None:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://api.chucknorris.io/jokes/random"
+            ) as request:
+                if request.status == 200:
+                    data = await request.json()
+                    embed = discord.Embed(
+                        title="Chuck Norris Fact",
+                        description=data["value"],
+                        color=0xD75BF4
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="Error!",
+                        description="There is something wrong with the API, please try again later",
+                        color=0xE02B2B,
+                    )
+                    await context.send(embed=embed)
 
 async def setup(bot) -> None:
     await bot.add_cog(Fun(bot))
