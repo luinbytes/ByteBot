@@ -337,7 +337,7 @@ class Currency(commands.Cog, name="currency"):
             balance = result[0]
             embed = discord.Embed(
                 title="Balance",
-                description=f"{user.name}'s current balance is {balance} coins.",
+                description=f"{user.mention}'s current balance is {balance} coins.",
                 color=discord.Color.green()
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
@@ -345,7 +345,7 @@ class Currency(commands.Cog, name="currency"):
         else:
             embed = discord.Embed(
                 title="Balance",
-                description=f"{user.name} hasn't registered yet.",
+                description=f"{user.mention} hasn't registered yet.",
                 color=discord.Color.red()
             )
             await context.send(embed=embed)

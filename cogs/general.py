@@ -125,6 +125,10 @@ class General(commands.Cog, name="general"):
             value=f"/ (Slash Commands) or {self.bot.config['prefix']} for normal commands",
             inline=False,
         )
+        embed.add_field(
+            name="Enjoying ByteBot?",
+            value="Consider [voting](https://top.gg/bot/1240320839719719025#vote) for ByteBot on top.gg!"
+        )
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
