@@ -376,7 +376,7 @@ class Currency(commands.Cog, name="currency"):
                 description="You are not registered to gamble.",
                 color=discord.Color.red()
             )
-            embed.add_field(name="How to register", value=f"Use the `{self.bot.config["prefix"]}roll` command to register yourself in the currency database!", inline=False)
+            embed.add_field(name="How to register", value=f"Use the `roll` command to register yourself in the currency database!", inline=False)
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
             return
