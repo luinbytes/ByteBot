@@ -516,13 +516,13 @@ class Moderation(commands.Cog, name="moderation"):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
+        config = await self.load_config()
         min_reactions = config.get('starboard_min_reactions')
         if payload.emoji.name == "⭐":
             channel = self.bot.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
             reaction = [react for react in message.reactions if str(react.emoji) == "⭐"][0]
             if reaction and reaction.count >= min_reactions:
-                config = await self.load_config()
                 starboard_channel_id = config.get('starboard', {}).get(str(reaction.message.guild.id))
                 if starboard_channel_id:
                     starboard_channel = reaction.message.guild.get_channel(int(starboard_channel_id))
