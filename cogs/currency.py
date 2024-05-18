@@ -8,6 +8,10 @@ import random
 import math
 import asyncio
 from datetime import datetime, timedelta
+from PIL import Image
+from typing import List, Tuple, Union
+
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 
 # Ensure database directory exists
 DATABASE_DIR = "database"
@@ -30,6 +34,83 @@ if not os.path.exists(DB_PATH):
 
 conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
+
+class Card:
+    suits = ["H", "D", "C", "S"]
+
+    def __init__(self, suit: str, value: int):
+        self.suit = suit
+        self.value = value
+        self.symbol = self.get_symbol(value)
+        self.down = False
+        self.image = f"{self.symbol}{self.suit}.png"
+
+    @staticmethod
+    def get_symbol(value: int) -> str:
+        if value == 11:
+            return "J"
+        elif value == 12:
+            return "Q"
+        elif value == 13:
+            return "K"
+        elif value == 14:
+            return "A"
+        return str(value)
+
+    def flip(self):
+        self.down = not self.down
+        return self
+
+def hand_to_images(hand: List[Card]) -> List[Image.Image]:
+    return [Image.open(os.path.join(ABS_PATH, 'cards', card.image)) for card in hand]
+
+def center(*hands: Tuple[List[Image.Image]]) -> Image.Image:
+    bg = Image.open(os.path.join(ABS_PATH, 'table.png'))
+    bg_center_x = bg.size[0] // 2
+    bg_center_y = bg.size[1] // 2
+
+    img_w = hands[0][0].size[0]
+    img_h = hands[0][0].size[1]
+
+    start_y = bg_center_y - (((len(hands) * img_h) + ((len(hands) - 1) * 15)) // 2)
+    for hand in hands:
+        start_x = bg_center_x - (((len(hand) * img_w) + ((len(hand) - 1) * 10)) // 2)
+        for card in hand:
+            bg.alpha_composite(card, (start_x, start_y))
+            start_x += img_w + 10
+        start_y += img_h + 15
+    return bg
+
+def output(name: str, *hands: Tuple[List[Card]]) -> None:
+    center(*map(hand_to_images, hands)).save(f'{name}.png')
+
+def calc_hand(hand: List[Card]) -> int:
+    non_aces = [c for c in hand if c.symbol != 'A']
+    aces = [c for c in hand if c.symbol == 'A']
+    total = 0
+    for card in non_aces:
+        if not card.down:
+            if card.symbol in 'JQK':
+                total += 10
+            else:
+                total += card.value
+    for card in aces:
+        if not card.down:
+            if total <= 10:
+                total += 11
+            else:
+                total += 1
+    return total
+
+def check_bet(ctx: Context, bet: int) -> None:
+    bet = int(bet)
+    if bet < 10:
+        raise commands.errors.BadArgument()
+    user_id = ctx.author.id
+    c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+    result = c.fetchone()
+    if not result or bet > result[0]:
+        raise commands.errors.InsufficientFundsException(result[0] if result else 0, bet)
 
 class Currency(commands.Cog, name="currency"):
     def __init__(self, bot) -> None:
@@ -324,7 +405,7 @@ class Currency(commands.Cog, name="currency"):
         # Perform gamble
         result = random.choice(["win", "lose"])
         if result == "win":
-            winnings = math.floor(amount * 1.3)
+            winnings = math.floor(amount * 1.4)
             c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
             conn.commit()
             message = f"You won {winnings} coins!"
@@ -349,6 +430,7 @@ class Currency(commands.Cog, name="currency"):
         usage="<@user> <amount>",
         aliases=["transfer", "give"]
     )
+    @app_commands.describe(amount="The amount of coins to send.")
     async def send(self, context: Context, user: discord.User, amount: int) -> None:
         """
         This command allows users to send coins to another user.
@@ -462,7 +544,6 @@ class Currency(commands.Cog, name="currency"):
         """
         user_id = user.id
 
-        # Check if user is registered
         c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
         user_data = c.fetchone()
         if not user_data:
@@ -475,7 +556,6 @@ class Currency(commands.Cog, name="currency"):
             await context.send(embed=embed)
             return
 
-        # Update user's balance
         c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
         conn.commit()
 
@@ -503,7 +583,6 @@ class Currency(commands.Cog, name="currency"):
         """
         user_id = user.id
 
-        # Check if user is registered
         c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
         user_data = c.fetchone()
         if not user_data:
@@ -515,8 +594,7 @@ class Currency(commands.Cog, name="currency"):
             embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
             await ctx.send(embed=embed)
             return
-
-        # Update user's balance
+        
         c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
         conn.commit()
 
@@ -609,8 +687,214 @@ class Currency(commands.Cog, name="currency"):
         embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
         await ctx.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="leaderboard",
+        description="Displays the top users with the highest balances.",
+        aliases=["lb", "top"]
+    )
+    async def leaderboard(self, context: Context) -> None:
+        """
+        Display the top users with the highest balances.
+        """
+        # Fetch top 10 users with the highest balance
+        c.execute("SELECT user_id, balance FROM users ORDER BY balance DESC LIMIT 10")
+        top_users = c.fetchall()
+
+        if not top_users:
+            embed = discord.Embed(
+                title="Leaderboard",
+                description="No users found in the leaderboard.",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        # Create the leaderboard embed
+        embed = discord.Embed(
+            title="Leaderboard - Top 10 Users",
+            description="Here are the top users with the highest balances:",
+            color=discord.Color.gold()
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+
+        for idx, (user_id, balance) in enumerate(top_users, start=1):
+            user = self.bot.get_user(user_id)
+            if user:
+                embed.add_field(name=f"{idx}. {user.display_name}", value=f"{balance} coins", inline=False)
+            else:
+                embed.add_field(name=f"{idx}. User ID: {user_id}", value=f"{balance} coins", inline=False)
+
+        await context.send(embed=embed)
+
+    # Blackjack
+    @commands.command(
+    name="blackjack",
+    description="Play a simple game of blackjack. Bet must be greater than $0.",
+    usage="<bet_amount>"
+    )
+    @app_commands.describe(bet_amount="The amount you want to bet in blackjack, minimum is 10 coins.")
+    async def blackjack(self, context: Context, bet_amount: int) -> None:
+        user_id = context.author.id
+        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        result = c.fetchone()
+        if not result:
+            await self.register_user_hol(context)
+
+        balance = result[0] if result else 0
+
+        if balance <= 0:
+            embed = discord.Embed(
+                title="Blackjack",
+                description="You don't have enough coins to play.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        try:
+            check_bet(context, bet_amount)
+        except commands.errors.BadArgument:
+            embed = discord.Embed(
+                title="Invalid Bet Amount",
+                description="The bet amount must be greater than $0.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+        except commands.errors.InsufficientFundsException as e:
+            embed = discord.Embed(
+                title="Insufficient Funds",
+                description=f"You don't have enough coins for that bet. Your balance: {e.balance}.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        deck = [Card(suit, num) for num in range(2, 15) for suit in Card.suits]
+        random.shuffle(deck)
+
+        player_hand: List[Card] = [deck.pop(), deck.pop()]
+        dealer_hand: List[Card] = [deck.pop(), deck.pop().flip()]
+
+        player_score = calc_hand(player_hand)
+        dealer_score = calc_hand(dealer_hand)
+
+        async def out_table(**kwargs) -> discord.Message:
+            output(context.author.id, dealer_hand, player_hand)
+            embed = discord.Embed(**kwargs)
+            file = discord.File(f"{context.author.id}.png", filename=f"{context.author.id}.png")
+            embed.set_image(url=f"attachment://{context.author.id}.png")
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            return await context.send(file=file, embed=embed)
+
+        def check_reaction(reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> bool:
+            return all((
+                str(reaction.emoji) in ("🇸", "🇭"),
+                user == context.author,
+                user != self.bot.user,
+                reaction.message.id == msg.id
+            ))
+
+        standing = False
+
+        msg = None
+        while True:
+            player_score = calc_hand(player_hand)
+            dealer_score = calc_hand(dealer_hand)
+            if player_score == 21:
+                bet_amount = int(bet_amount * 1.5)
+                c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
+                conn.commit()
+                result = ("Blackjack!", 'won')
+                break
+            elif player_score > 21:
+                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, context.author.id))
+                conn.commit()
+                result = ("Player busts", 'lost')
+                break
+
+            msg = await out_table(
+                title="Your Turn",
+                description=f"Your hand: {player_score}\nDealer's hand: {dealer_score}"
+            )
+            await msg.add_reaction("🇭")
+            await msg.add_reaction("🇸")
+
+            try:
+                reaction, _ = await self.bot.wait_for('reaction_add', timeout=60, check=check_reaction)
+            except asyncio.TimeoutError:
+                if msg:
+                    try:
+                        await msg.delete()
+                    except discord.errors.NotFound:
+                        pass
+                return
+
+            if str(reaction.emoji) == "🇭":
+                player_hand.append(deck.pop())
+                if msg:
+                    try:
+                        await msg.delete()
+                    except discord.errors.NotFound:
+                        pass
+                continue
+            elif str(reaction.emoji) == "🇸":
+                standing = True
+                break
+
+        if standing:
+            dealer_hand[1].flip()
+            while (dealer_score := calc_hand(dealer_hand)) < 17:
+                dealer_hand.append(deck.pop())
+
+            if dealer_score == 21:
+                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, context.author.id))
+                conn.commit()
+                result = ('Dealer blackjack', 'lost')
+            elif dealer_score > 21:
+                c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
+                conn.commit()
+                result = ("Dealer busts", 'won')
+            elif dealer_score == player_score:
+                result = ("Tie!", 'kept')
+            elif dealer_score > player_score:
+                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, context.author.id))
+                conn.commit()
+                result = ("You lose!", 'lost')
+            else:
+                c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
+                conn.commit()
+                result = ("You win!", 'won')
+
+        color = discord.Color.red() if result[1] == 'lost' else discord.Color.green() if result[1] == 'won' else discord.Color.blue()
+        if msg:
+            try:
+                await msg.delete()
+            except discord.errors.NotFound:
+                pass
+        try:
+            await out_table(
+                title=result[0],
+                color=color,
+                description=f"**You {result[1]} {bet_amount} coins!**\nYour hand: {player_score}\nDealer's hand: {dealer_score}"
+            )
+            os.remove(f'./{context.author.id}.png')
+
+        except asyncio.TimeoutError:
+            embed = discord.Embed(
+                title="Blackjack",
+                description="You took too long to respond. The game has ended.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+
 @commands.Cog.listener()
-async def on_disconnect(self, member):
+async def on_disconnect(self):
     conn.close()
 
 async def setup(bot) -> None:
