@@ -2,11 +2,31 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
+import sqlite3
+import os
+import json
 
+DATABASE_DIR = "database"
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(DATABASE_DIR, "currency.db")
+
+conn = sqlite3.connect(DB_PATH)
+c = conn.cursor()
 
 class Owner(commands.Cog, name="owner"):
     def __init__(self, bot) -> None:
         self.bot = bot
+
+    async def load_config(self):
+        try:
+            with open('config.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+    async def save_config(self, config):
+        with open('config.json', 'w') as f:
+            json.dump(config, f, indent=4)
 
     @commands.command(
         name="sync",
@@ -207,6 +227,277 @@ class Owner(commands.Cog, name="owner"):
         embed = discord.Embed(description=message, color=0xBEBEFE)
         await context.send(embed=embed)
 
+    @commands.hybrid_command(
+            name="winmultiplier",
+            description="Check or set the global win muliplier.",
+            usage="<amount>",
+            aliases=["winmulti", "wmulti"]
+    )
+    @commands.is_owner()
+    @app_commands.describe(amount="The amount to set the win multiplier to.")
+    async def winmultiplier(self, context: Context, amount: float = None) -> None:
+        """
+        Check or set the global coin multiplier.
+
+        :param context: The application command context.
+        :param amount: The amount to set the coin multiplier to.
+        """
+        config = await self.load_config()
+        if amount is None:
+            embed = discord.Embed(
+                title="Win Multiplier",
+                description=f"The current win multiplier is set to {config['win_multiplier']}.",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+        else:
+            config['win_multiplier'] = amount
+            await self.save_config(config)
+            embed = discord.Embed(
+                title="Win Multiplier",
+                description=f"The win multiplier has been set to {amount}.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            
+    @commands.hybrid_command(
+            name="lossmultiplier",
+            description="Check or set the global loss muliplier.",
+            usage="<amount>",
+            aliases=["lossmulti", "lmulti"]
+    )
+    @commands.is_owner()
+    @app_commands.describe(amount="The amount to set the loss multiplier to.")
+    async def lossmultiplier(self, context: Context, amount: float = None) -> None:
+        """
+        Check or set the global coin multiplier.
+
+        :param context: The application command context.
+        :param amount: The amount to set the coin multiplier to.
+        """
+        config = await self.load_config()
+        if amount is None:
+            embed = discord.Embed(
+                title="Loss Multiplier",
+                description=f"The current loss multiplier is set to {config['loss_multiplier']}.",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+        else:
+            config['loss_multiplier'] = amount
+            await self.save_config(config)
+            embed = discord.Embed(
+                title="Loss Multiplier",
+                description=f"The loss multiplier has been set to {amount}.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="addcurr",
+        description="Add a currency to a user's balance.",
+        usage="<@user> <amount>"
+    )
+    @commands.is_owner()
+    async def addcurr(self, context: Context, user: discord.User, amount: int) -> None:
+        """
+        This command allows administrators to add currency to a user's balance.
+
+        :param context: The application command context.
+        :param user: The user to add currency to.
+        :param amount: The amount of currency to add.
+        """
+        user_id = user.id
+
+        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        user_data = c.fetchone()
+        if not user_data:
+            embed = discord.Embed(
+                title="User Not Registered",
+                description="The specified user is not registered.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
+        c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+        conn.commit()
+
+        embed = discord.Embed(
+            title="🪙 Currency Added",
+            description=f"{amount} coins have been added to {user.display_name}'s balance.",
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="rmbalance",
+        description="Remove a user's balance.",
+        usage="<@user> <@amount>",
+        aliases=["rmbal", "removebal", "removebalance"]
+    )
+    @commands.is_owner()
+    async def rmcurr(self, ctx, user: discord.User, amount: int):
+        """
+        Remove currency from a user's balance.
+        
+        :param user: The user to remove currency from.
+        :param amount: The amount of currency to remove.
+        """
+        user_id = user.id
+
+        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        user_data = c.fetchone()
+        if not user_data:
+            embed = discord.Embed(
+                title="User Not Registered",
+                description="The specified user is not registered.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
+            await ctx.send(embed=embed)
+            return
+        
+        c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
+        conn.commit()
+
+        embed = discord.Embed(
+            title="🪙 Currency Removed",
+            description=f"{amount} coins have been removed from {user.display_name}'s balance.",
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="resetbalance",
+        description="Resets a user's balance.",
+        usage="<@user>",
+        aliases=["rsbalance", "resetbal", "rsbal"]
+    )
+    @commands.is_owner()
+    async def resetcurr(self, ctx, user: discord.User):
+        """
+        Reset a user's balance to 0.
+        
+        :param user: The user whose balance to reset.
+        """
+        user_id = user.id
+
+        # Check if user is registered
+        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        user_data = c.fetchone()
+        if not user_data:
+            embed = discord.Embed(
+                title="User Not Registered",
+                description="The specified user is not registered.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
+            await ctx.send(embed=embed)
+            return
+
+        # Reset user's balance to 0
+        c.execute("UPDATE users SET balance = 0 WHERE user_id = ?", (user_id,))
+        conn.commit()
+
+        embed = discord.Embed(
+            title="🪙 Balance Reset",
+            description=f"{user.display_name}'s balance has been reset to 0 coins.",
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="setbalance",
+        description="Set a user's balance.",
+        usage="<@user> <@amount>",
+        aliases=["setbal"]
+    )
+    @commands.has_permissions(administrator=True)
+    async def setcurr(self, ctx, user: discord.User, amount: int):
+        """
+        Set a user's balance to a specific amount.
+        
+        :param user: The user whose balance to set.
+        :param amount: The amount of currency to set.
+        """
+        user_id = user.id
+
+        # Check if user is registered
+        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        user_data = c.fetchone()
+        if not user_data:
+            embed = discord.Embed(
+                title="User Not Registered",
+                description="The specified user is not registered.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
+            await ctx.send(embed=embed)
+            return
+
+        # Update user's balance to the specified amount
+        c.execute("UPDATE users SET balance = ? WHERE user_id = ?", (amount, user_id))
+        conn.commit()
+
+        embed = discord.Embed(
+            title="🪙 Balance Set",
+            description=f"{user.display_name}'s balance has been set to {amount} coins.",
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="setcolourroleprice",
+        description="Set the price of a colour role.",
+        usage="<price>",
+        aliases=["colourroleprice", "setcolourprice", "setcolourrole"]
+    )
+    @app_commands.describe(price="The price of the colour role.")
+    @commands.is_owner()
+    async def setcolourroleprice(self, context: Context, price: int = None) -> None:
+        """
+        Set the price of a colour role.
+        
+        :param price: The price of the colour role.
+        """
+        config = await self.load_config()
+
+        if not price:
+            embed = discord.Embed(
+                title="Colour Role Price",
+                description=f"The price of a colour role is currently set to {config['market_colour_pricing']}.",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+        else:
+            config["market_colour_pricing"] = price
+            await self.save_config(config)
+
+            embed = discord.Embed(
+                title="Colour Role Price",
+                description=f"The price of a colour role has been set to {price}.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+
+@commands.Cog.listener()
+async def on_disconnect(self):
+    conn.close()
 
 async def setup(bot) -> None:
     await bot.add_cog(Owner(bot))
