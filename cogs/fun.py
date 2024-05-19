@@ -26,7 +26,6 @@ class Choice(discord.ui.View):
         self.value = "tails"
         self.stop()
 
-
 class RockPaperScissors(discord.ui.Select):
     def __init__(self) -> None:
         options = [

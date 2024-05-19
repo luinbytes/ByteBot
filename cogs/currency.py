@@ -129,14 +129,14 @@ class Currency(commands.Cog, name="currency"):
             json.dump(config, f, indent=4)
 
     @commands.hybrid_command(
-            name="coinmultiplier",
-            description="Check or set the global coin muliplier.",
+            name="winmultiplier",
+            description="Check or set the global win muliplier.",
             usage="<amount>",
-            aliases=["cm", "coinmulti"]
+            aliases=["winmulti", "wmulti"]
     )
     @commands.has_permissions(administrator=True)
-    @app_commands.describe(amount="The amount to set the coin multiplier to.")
-    async def coinmultiplier(self, context: Context, amount: int = None) -> None:
+    @app_commands.describe(amount="The amount to set the win multiplier to.")
+    async def winmultiplier(self, context: Context, amount: float = None) -> None:
         """
         Check or set the global coin multiplier.
 
@@ -146,24 +146,59 @@ class Currency(commands.Cog, name="currency"):
         config = await self.load_config()
         if amount is None:
             embed = discord.Embed(
-                title="Coin Multiplier",
-                description=f"The current coin multiplier is set to {config['coin_multiplier']}.",
+                title="Win Multiplier",
+                description=f"The current win multiplier is set to {config['win_multiplier']}.",
                 color=discord.Color.blue()
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
             return
         else:
-            config['coin_multiplier'] = amount
+            config['win_multiplier'] = amount
             await self.save_config(config)
             embed = discord.Embed(
-                title="Coin Multiplier",
-                description=f"The coin multiplier has been set to {amount}.",
+                title="Win Multiplier",
+                description=f"The win multiplier has been set to {amount}.",
                 color=discord.Color.green()
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
             
+    @commands.hybrid_command(
+            name="lossmultiplier",
+            description="Check or set the global loss muliplier.",
+            usage="<amount>",
+            aliases=["lossmulti", "lmulti"]
+    )
+    @commands.has_permissions(administrator=True)
+    @app_commands.describe(amount="The amount to set the loss multiplier to.")
+    async def lossmultiplier(self, context: Context, amount: float = None) -> None:
+        """
+        Check or set the global coin multiplier.
+
+        :param context: The application command context.
+        :param amount: The amount to set the coin multiplier to.
+        """
+        config = await self.load_config()
+        if amount is None:
+            embed = discord.Embed(
+                title="Loss Multiplier",
+                description=f"The current loss multiplier is set to {config['loss_multiplier']}.",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+        else:
+            config['loss_multiplier'] = amount
+            await self.save_config(config)
+            embed = discord.Embed(
+                title="Loss Multiplier",
+                description=f"The loss multiplier has been set to {amount}.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="roll",
@@ -182,9 +217,9 @@ class Currency(commands.Cog, name="currency"):
         if result:
             last_roll_date = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S") if result[0] else datetime.min
             current_time = datetime.now()
-            if (current_time - last_roll_date).total_seconds() >= 3600:  # 1 hour in seconds
+            if (current_time - last_roll_date).total_seconds() >= 1800:  # 0.5 hour in seconds
                 # Roll dice
-                earnings = random.randint(25, 250)
+                earnings = random.randint(25, 500)
                 c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
                 c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (current_time.strftime("%Y-%m-%d %H:%M:%S"), user_id))
                 conn.commit()
@@ -248,7 +283,10 @@ class Currency(commands.Cog, name="currency"):
         description="Play the higher or lower gambling game!",
         aliases=["hol", "higherlower"]
     )
-    async def higherlower(self, context: Context) -> None:
+    @app_commands.describe(
+        amount="The amount of coins to bet."
+    )
+    async def higherlower(self, context: Context, amount: int) -> None:
         """
         Play the higher or lower gambling game.
 
@@ -272,24 +310,22 @@ class Currency(commands.Cog, name="currency"):
             await context.send(embed=embed)
             return
 
-        embed = discord.Embed(
-            title="Higher or Lower!",
-            description=f"You currently have {balance} coins.",
-            color=discord.Color.blue()
-        )
-        embed.add_field(name="Rules", value="A random number from 1-20 will be chosen. You must guess if the next number will be higher or lower than the current number.", inline=False)
-        embed.add_field(name="Betting open.", value="Please enter a bet amount...", inline=True)
-        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-        await context.send(embed=embed)
+        if amount < 10:
+            embed = discord.Embed(
+                title="Higher or Lower!",
+                description="The minimum bet amount is 10 coins.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
 
-
-        def check(message):
-            return message.author == context.author and message.channel == context.channel and message.content.isdigit()
         config = await self.load_config()
+        def check(reaction, user):
+            return user == context.author
 
         try:
-            message = await self.bot.wait_for('message', timeout=30.0, check=check)
-            bet_amount = int(message.content)
+            bet_amount = int(amount)
             if bet_amount > balance:
                 embed = discord.Embed(
                     title="Higher or Lower!",
@@ -299,52 +335,76 @@ class Currency(commands.Cog, name="currency"):
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 await context.send(embed=embed)
                 return
+            
+            class holChoice(discord.ui.View):
+                def __init__(self, user):
+                    super().__init__()
+                    self.user = user
+                    self.value = None
 
-            number = random.randint(1, 20)
+                @discord.ui.button(label='Higher', style=discord.ButtonStyle.blurple)
+                async def higher(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user != self.user:
+                        return
+                    self.value = 'h'
+                    self.stop()
+
+                @discord.ui.button(label='Lower', style=discord.ButtonStyle.red)
+                async def lower(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    print(interaction.user)
+                    if interaction.user != self.user:
+                        return
+                    self.value = 'l'
+                    self.stop()
+
+            number = random.randint(1, 30)
+            buttons = holChoice(context.author)
             embed = discord.Embed(
                 title="Higher or Lower!",
-                description=f"Guess if the next number will be higher or lower than {number} (h/l):",
+                description=f"Guess if the next number will be higher or lower than `{number}` (h/l):",
                 color=discord.Color.blue()
             )
+            embed.add_field(name="Rules:", value=f"```A random number from 1 to 30 will be generated. You must guess if the next number will be higher or lower than the current number. If you guess correctly, you win {config["win_multiplier"]}x your bet amount. If you guess incorrectly, you lose 55% of your bet amount.```", inline=False)
+            embed.add_field(name="Bet Amount:", value=f"`{bet_amount} coins`", inline=True)
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-
-            def higher_lower_check(message):
-                return message.author == context.author and message.channel == context.channel and message.content.lower() in ['h', 'l']
+            message = await context.send(embed=embed, view=buttons)
+            await buttons.wait()
+            await message.edit(embed=embed, view=None, content=None)
 
             try:
-                guess_message = await self.bot.wait_for('message', timeout=30.0, check=higher_lower_check)
-                guess = guess_message.content.lower()
-
-                next_number = random.randint(1, 20)
-                embed = discord.Embed(
-                    title="Higher or Lower!",
-                    description=f"The next number is: {next_number}",
-                    color=discord.Color.blue()
-                )
-                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                await context.send(embed=embed)
-
+                guess = buttons.value
+                button_value = ""
+                if guess == "h":
+                    button_value = "higher"
+                else:
+                    button_value = "lower"
+                next_number = random.randint(2, 29)
+                if next_number == number:
+                    random.randint(2, 19)
                 if (next_number > number and guess == 'h') or (next_number < number and guess == 'l'):
-                    winnings = math.floor(bet_amount * config["coin_multiplier"])
+                    winnings = math.floor(bet_amount * config["win_multiplier"])
                     embed = discord.Embed(
                         title="Higher or Lower!",
                         description="Congratulations! You guessed correctly. You won {} coins! 🪙".format(winnings),
                         color=discord.Color.green()
                     )
+                    embed.add_field(name="Number:", value=f"First: `{number}` | Next: `{next_number}`", inline=False)
+                    embed.add_field(name="Guess:", value=f"You guessed `{button_value}`.", inline=False)
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                    await context.send(embed=embed)
+                    await message.edit(embed=embed)
                     c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
                     conn.commit()
                 else:
-                    losses = math.floor(bet_amount / 2)
+                    losses = math.floor(bet_amount * config["loss_multiplier"])
                     embed = discord.Embed(
                         title="Higher or Lower!",
-                        description=f"Sorry, you guessed incorrectly. The correct number was {number}. You lost {losses} coins.",
+                        description=f"Sorry, you guessed incorrectly.  You lost {losses} coins.",
                         color=discord.Color.red()
                     )
+                    embed.add_field(name="Number:", value=f"First: `{number}` | Next: `{next_number}`", inline=False)
+                    embed.add_field(name="Guess:", value=f"You guessed `{button_value}`.", inline=False)
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                    await context.send(embed=embed)
+                    await message.edit(embed=embed)
                     c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
                     conn.commit()
 
@@ -355,7 +415,7 @@ class Currency(commands.Cog, name="currency"):
                     color=discord.Color.red()
                 )
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                await context.send(embed=embed)
+                await message.edit(embed=embed)
 
         except asyncio.TimeoutError:
             embed = discord.Embed(
@@ -469,13 +529,13 @@ class Currency(commands.Cog, name="currency"):
         config = await self.load_config()
         result = random.choice(["win", "lose"])
         if result == "win":
-            winnings = math.floor(amount * config["coin_multiplier"])
+            winnings = math.floor(amount * config["win_multiplier"])
             c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
             conn.commit()
             message = f"🪙 You won {winnings} coins! 🪙"
             color = discord.Color.green()
         else:
-            losses = math.floor(amount / 2)
+            losses = math.floor(amount * config["loss_multiplier"])
             c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
             conn.commit()
             message = f"You lost {losses} coins!"
@@ -963,6 +1023,24 @@ class Currency(commands.Cog, name="currency"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        title="rates",
+        description="View the current win and loss multipliers.",
+        aliases=["multipliers", "multi"]
+    )
+    async def rates(self, context: Context) -> None:
+        """
+        View the current win and loss multipliers.
+        """
+        config = await self.load_config()
+        embed = discord.Embed(
+            title="Rates",
+            description=f"Win Multiplier: {config['win_multiplier']}\nLoss Multiplier: {config['loss_multiplier']}",
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
 
 @commands.Cog.listener()
 async def on_disconnect(self):

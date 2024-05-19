@@ -2,7 +2,8 @@
     "prefix": "!",
     "invite_link": "https://discord.com/oauth2/authorize?client_id=1240320839719719025&permissions=8&scope=bot",
     "bot_name": "ByteBot",
-    "coin_multiplier": 0.55,
+    "win_multiplier": 0.45,
+    "loss_multiplier": 0.65,
     "autorole": {
         "1040685488866078861": "1240424454627135538"
     },
