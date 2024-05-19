@@ -443,6 +443,16 @@ class Currency(commands.Cog, name="currency"):
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
             return
+        
+        if amount < 10:
+            embed = discord.Embed(
+                title="Invalid Amount",
+                description="The minimum amount to gamble is 10 coins.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
 
         if amount > balance:
             embed = discord.Embed(
