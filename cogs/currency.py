@@ -5,6 +5,7 @@ import discord
 import os
 import sqlite3
 import random
+import json
 import math
 import asyncio
 from datetime import datetime, timedelta
@@ -116,6 +117,54 @@ class Currency(commands.Cog, name="currency"):
     def __init__(self, bot) -> None:
         self.bot = bot
 
+    async def load_config(self):
+        try:
+            with open('config.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+    async def save_config(self, config):
+        with open('config.json', 'w') as f:
+            json.dump(config, f, indent=4)
+
+    @commands.hybrid_command(
+            name="coinmultiplier",
+            description="Check or set the global coin muliplier.",
+            usage="<amount>",
+            aliases=["cm", "coinmulti"]
+    )
+    @commands.has_permissions(administrator=True)
+    @app_commands.describe(amount="The amount to set the coin multiplier to.")
+    async def coinmultiplier(self, context: Context, amount: int = None) -> None:
+        """
+        Check or set the global coin multiplier.
+
+        :param context: The application command context.
+        :param amount: The amount to set the coin multiplier to.
+        """
+        config = await self.load_config()
+        if amount is None:
+            embed = discord.Embed(
+                title="Coin Multiplier",
+                description=f"The current coin multiplier is set to {config['coin_multiplier']}.",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+        else:
+            config['coin_multiplier'] = amount
+            await self.save_config(config)
+            embed = discord.Embed(
+                title="Coin Multiplier",
+                description=f"The coin multiplier has been set to {amount}.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            
+
     @commands.hybrid_command(
         name="roll",
         description="🪙 Roll for a reward!",
@@ -135,7 +184,7 @@ class Currency(commands.Cog, name="currency"):
             current_time = datetime.now()
             if (current_time - last_roll_date).total_seconds() >= 3600:  # 1 hour in seconds
                 # Roll dice
-                earnings = random.randint(5, 250)
+                earnings = random.randint(25, 250)
                 c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
                 c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (current_time.strftime("%Y-%m-%d %H:%M:%S"), user_id))
                 conn.commit()
@@ -172,7 +221,7 @@ class Currency(commands.Cog, name="currency"):
         conn.commit()
         #await context.send("You have been registered and can now roll the dice to earn coins.")
         # Roll dice
-        earnings = random.randint(1, 100)
+        earnings = random.randint(25, 250)
         c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
         c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id))
         conn.commit()
@@ -228,6 +277,7 @@ class Currency(commands.Cog, name="currency"):
             description=f"You currently have {balance} coins.",
             color=discord.Color.blue()
         )
+        embed.add_field(name="Rules", value="A random number from 1-20 will be chosen. You must guess if the next number will be higher or lower than the current number.", inline=False)
         embed.add_field(name="Betting open.", value="Please enter a bet amount...", inline=True)
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
@@ -235,6 +285,7 @@ class Currency(commands.Cog, name="currency"):
 
         def check(message):
             return message.author == context.author and message.channel == context.channel and message.content.isdigit()
+        config = await self.load_config()
 
         try:
             message = await self.bot.wait_for('message', timeout=30.0, check=check)
@@ -275,7 +326,7 @@ class Currency(commands.Cog, name="currency"):
                 await context.send(embed=embed)
 
                 if (next_number > number and guess == 'h') or (next_number < number and guess == 'l'):
-                    winnings = math.floor(bet_amount * 1.2)
+                    winnings = math.floor(bet_amount * config["coin_multiplier"])
                     embed = discord.Embed(
                         title="Higher or Lower!",
                         description="Congratulations! You guessed correctly. You won {} coins! 🪙".format(winnings),
@@ -356,8 +407,8 @@ class Currency(commands.Cog, name="currency"):
     usage="<amount>",
     aliases=["bet"]
     )
-    @app_commands.describe(amount="The amount of currency to gamble. All winnings are 1.3x the amount.")
-    @commands.cooldown(rate=1, per=10, type=commands.BucketType.user)
+    @app_commands.describe(amount="The amount of currency to gamble.")
+    @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
     async def gamble(self, context: Context, amount: int) -> None:
         """
         This command allows users to gamble a specified amount of currency.
@@ -404,17 +455,19 @@ class Currency(commands.Cog, name="currency"):
             return
 
         # Perform gamble
+        config = await self.load_config()
         result = random.choice(["win", "lose"])
         if result == "win":
-            winnings = math.floor(amount * 1.4)
+            winnings = math.floor(amount * config["coin_multiplier"])
             c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
             conn.commit()
             message = f"🪙 You won {winnings} coins! 🪙"
             color = discord.Color.green()
         else:
-            c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
+            losses = math.floor(amount / 2)
+            c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
             conn.commit()
-            message = f"You lost {amount} coins!"
+            message = f"You lost {losses} coins!"
             color = discord.Color.red()
 
         embed = discord.Embed(
@@ -806,14 +859,15 @@ class Currency(commands.Cog, name="currency"):
         while True:
             player_score = calc_hand(player_hand)
             dealer_score = calc_hand(dealer_hand)
+            config = await self.load_config()
             if player_score == 21:
-                bet_amount = int(bet_amount * 1.5)
                 c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
                 conn.commit()
                 result = ("🪙 Blackjack!", 'won')
                 break
             elif player_score > 21:
-                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, context.author.id))
+                losses = math.floor(bet_amount * 0.90)
+                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ("Player busts", 'lost')
                 break
@@ -851,9 +905,11 @@ class Currency(commands.Cog, name="currency"):
             dealer_hand[1].flip()
             while (dealer_score := calc_hand(dealer_hand)) < 17:
                 dealer_hand.append(deck.pop())
+            
+            losses = math.floor(bet_amount * 0.9)
 
             if dealer_score == 21:
-                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, context.author.id))
+                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ('Dealer blackjack', 'lost')
             elif dealer_score > 21:
@@ -863,7 +919,7 @@ class Currency(commands.Cog, name="currency"):
             elif dealer_score == player_score:
                 result = ("Tie!", 'kept')
             elif dealer_score > player_score:
-                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, context.author.id))
+                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ("You lose!", 'lost')
             else:
@@ -872,6 +928,9 @@ class Currency(commands.Cog, name="currency"):
                 result = ("🪙 You win!", 'won')
 
         color = discord.Color.red() if result[1] == 'lost' else discord.Color.green() if result[1] == 'won' else discord.Color.blue()
+        coin_type = bet_amount
+        if result[1] == 'lost':
+            coin_type = losses
         if msg:
             try:
                 await msg.delete()
@@ -881,7 +940,7 @@ class Currency(commands.Cog, name="currency"):
             await out_table(
                 title=result[0],
                 color=color,
-                description=f"**You {result[1]} {bet_amount} coins!**\nYour hand: {player_score}\nDealer's hand: {dealer_score}"
+                description=f"**You {result[1]} {coin_type} coins!**\nYour hand: {player_score}\nDealer's hand: {dealer_score}"
             )
             os.remove(f'./{context.author.id}.png')
 

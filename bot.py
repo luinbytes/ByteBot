@@ -166,8 +166,13 @@ class DiscordBot(commands.Bot):
         """
         Setup the game status task of the bot.
         """
-        statuses = ["Reading discord.py docs...", "VSCode!", "with firearms."]
+        statuses = ["Reading discord.py docs...", "VSCode!", "with firearms.", "Vote for me on top.gg!", "You should gamble...", "Crying right now :)"]
         await self.change_presence(activity=discord.Game(random.choice(statuses)))
+        # channel = self.get_channel(1240624554544726037)
+        # random_message = random.choice(
+        #     ["Meine Wurstnudel tut weh! Bitte, oh bitte reiben Sie sie!", "Ich bin ein kleiner, dummer Bot!", "Gott, du riechst so gut......", "Ich mag es, wie du mich benutzt, um deine Ersparnisse zu verspielen. Das macht mich wirklich an.", "Du solltest wetten :)", "BLACKJACK JETZT SPIELEN", "Ich hoffe wirklich, dass Sie von einer hohen Klippe fallen."]
+        # )
+        # await channel.send(random_message)
 
     @status_task.before_loop
     async def before_status_task(self) -> None:
