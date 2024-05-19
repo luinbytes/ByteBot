@@ -337,14 +337,15 @@ class Currency(commands.Cog, name="currency"):
                     c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
                     conn.commit()
                 else:
+                    losses = math.floor(bet_amount / 2)
                     embed = discord.Embed(
                         title="Higher or Lower!",
-                        description=f"Sorry, you guessed incorrectly. The correct number was {number}. You lost {bet_amount} coins.",
+                        description=f"Sorry, you guessed incorrectly. The correct number was {number}. You lost {losses} coins.",
                         color=discord.Color.red()
                     )
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await context.send(embed=embed)
-                    c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (bet_amount, user_id))
+                    c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
                     conn.commit()
 
             except asyncio.TimeoutError:
