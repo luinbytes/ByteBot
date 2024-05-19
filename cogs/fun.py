@@ -360,5 +360,46 @@ class Fun(commands.Cog, name="fun"):
                     )
                     await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="trump",
+        description="Get a random Trump quote.",
+        aliases=["trumpquote"],
+        usage="trump"
+    )
+    @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
+    async def trump(self, context: Context) -> None:
+        trumparray = [
+            "https://media1.tenor.com/m/P_wiMZbNoxUAAAAd/trump-meme.gif",
+            "https://media1.tenor.com/m/mFQjditE1_YAAAAC/yes-thumbs.gif",
+            "https://media1.tenor.com/m/AfmmAJ1nCZwAAAAC/trumpwinning-trump.gif",
+            "https://media1.tenor.com/m/mZRs8QkX0p8AAAAC/donald-trump-liv-golf.gif",
+            "https://media1.tenor.com/m/3wIbTPz_2PMAAAAd/trump-laugh.gif",
+            "https://media1.tenor.com/m/feOregL8nIgAAAAd/trump.gif",
+            "https://media1.tenor.com/m/NxtLvCgo_kAAAAAC/trucker-for-trump-truckers.gif",
+            "https://media1.tenor.com/m/d8BcwLcNuF8AAAAC/trump-excited.gif"
+        ]
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://api.whatdoestrumpthink.com/api/v1/quotes/random"
+            ) as request:
+                if request.status == 200:
+                    data = await request.json()
+                    quote = data.get("message", "No quote available")
+                    embed = discord.Embed(
+                        title="Trump Quote",
+                        description=quote,
+                        color=0xD75BF4
+                    )
+                    embed.set_image(url=random.choice(trumparray))
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="Error!",
+                        description="There is something wrong with the API, please try again later",
+                        color=0xE02B2B,
+                    )
+                    await context.send(embed=embed)
+
 async def setup(bot) -> None:
     await bot.add_cog(Fun(bot))
