@@ -364,7 +364,7 @@ class Currency(commands.Cog, name="currency"):
                 description=f"Guess if the next number will be higher or lower than `{number}` (h/l):",
                 color=discord.Color.blue()
             )
-            embed.add_field(name="Rules:", value=f"```A random number from 1 to 30 will be generated. You must guess if the next number will be higher or lower than the current number. If you guess correctly, you win {config["win_multiplier"]}x your bet amount. If you guess incorrectly, you lose 55% of your bet amount.```", inline=False)
+            embed.add_field(name="Rules:", value=f"A random number from 1 to 30 will be generated. You must guess if the next number will be higher or lower than the current number. If you guess correctly, you win {config['win_multiplier']}x your bet amount. If you guess incorrectly, you lose 55% of your bet amount.", inline=False)
             embed.add_field(name="Bet Amount:", value=f"`{bet_amount} coins`", inline=True)
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             message = await context.send(embed=embed, view=buttons)
