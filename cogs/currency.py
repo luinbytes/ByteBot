@@ -658,7 +658,7 @@ class Currency(commands.Cog, name="currency"):
         description="Add a currency to a user's balance.",
         usage="<@user> <amount>"
     )
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def addcurr(self, context: Context, user: discord.User, amount: int) -> None:
         """
         This command allows administrators to add currency to a user's balance.
@@ -698,7 +698,7 @@ class Currency(commands.Cog, name="currency"):
         usage="<@user> <@amount>",
         aliases=["rmbal", "removebal", "removebalance"]
     )
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def rmcurr(self, ctx, user: discord.User, amount: int):
         """
         Remove currency from a user's balance.
@@ -737,7 +737,7 @@ class Currency(commands.Cog, name="currency"):
         usage="<@user>",
         aliases=["rsbalance", "resetbal", "rsbal"]
     )
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def resetcurr(self, ctx, user: discord.User):
         """
         Reset a user's balance to 0.
