@@ -3,4 +3,4 @@ aiosqlite
 discord.py
 python-dotenv
 pillow
-wavelink
+wavelink==3.3.0
