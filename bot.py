@@ -312,13 +312,12 @@ class DiscordBot(commands.Bot):
             password="nsftZKV3B81V9UbPCDDe9Xr48fDwxs",
             retries=25
         )
-        await wavelink.Pool.connect(client=self, nodes=[node])
-        self.logger.log(logging.INFO, "Connected to Wavelink nodes")
-
-        if node.status == NodeStatus.DISCONNECTED:
-            self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
-            await node._session.close()
-            await self.close()
+        if await wavelink.Pool.connect(client=self, nodes=[node]):
+            self.logger.log(logging.INFO, "Connected to Wavelink nodes")
+        else:
+            if node.status == NodeStatus.DISCONNECTED:
+                self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
+                await node._session.close()
 
 load_dotenv()
 
