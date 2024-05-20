@@ -308,8 +308,8 @@ class DiscordBot(commands.Bot):
         Connects to Wavelink nodes.
         """
         node: wavelink.Node = wavelink.Node(
-            uri="http://127.0.0.1:2333",
-            password="youshallnotpass",
+            uri="http://lavalink_container:2333",
+            password="nsftZKV3B81V9UbPCDDe9Xr48fDwxs",
             retries=5
         )
         await wavelink.Pool.connect(client=self, nodes=[node])
