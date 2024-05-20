@@ -8,6 +8,7 @@ import wavelink
 import aiosqlite
 import discord
 
+from wavelink import NodeStatus
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
@@ -314,14 +315,10 @@ class DiscordBot(commands.Bot):
         await wavelink.Pool.connect(client=self, nodes=[node])
         self.logger.log(logging.INFO, "Connected to Wavelink nodes")
 
-    @commands.Cog.listener()
-    async def on_disconnect(self) -> None:
-        """
-        The code in this event is executed when the bot disconnects from the Discord server.
-        """
-        await self.database.close()
-        await self.database.connection.close()
-        await self.close()
+        if node.status == NodeStatus.DISCONNECTED:
+            self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
+            await node._session.close()
+            await self.close()
 
 load_dotenv()
 
