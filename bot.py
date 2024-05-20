@@ -4,9 +4,11 @@ import os
 import platform
 import random
 import sys
-
+import wavelink
 import aiosqlite
 import discord
+
+from wavelink import NodeStatus
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
@@ -200,6 +202,7 @@ class DiscordBot(commands.Bot):
                 f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
             )
         )
+        await self.connect_nodes()
 
     async def on_message(self, message: discord.Message) -> None:
         """
@@ -299,6 +302,23 @@ class DiscordBot(commands.Bot):
             raise(error)
         else:
             raise error
+        
+    async def connect_nodes(self) -> None:
+        """
+        Connects to Wavelink nodes.
+        """
+        node: wavelink.Node = wavelink.Node(
+            uri="http://127.0.0.1:2333",
+            password="youshallnotpass",
+            retries=5
+        )
+        await wavelink.Pool.connect(client=self, nodes=[node])
+        self.logger.log(logging.INFO, "Connected to Wavelink nodes")
+
+        if node.status == NodeStatus.DISCONNECTED:
+            self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
+            await node._session.close()
+            await self.close()
 
 load_dotenv()
 
