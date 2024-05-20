@@ -12,7 +12,7 @@ class Music(commands.Cog, name="music"):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.channel = None
-        self.volume = 50
+        self.volume = 5
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, node: wavelink.Node) -> None:
