@@ -309,16 +309,20 @@ class DiscordBot(commands.Bot):
         """
         node: wavelink.Node = wavelink.Node(
             uri="http://127.0.0.1:2333",
-            password="nsftZKV3B81V9UbPCDDe9Xr48fDwxs",
+            password="youshallnotpass",
             retries=5
         )
         await wavelink.Pool.connect(client=self, nodes=[node])
         self.logger.log(logging.INFO, "Connected to Wavelink nodes")
 
-        if node.status == NodeStatus.DISCONNECTED:
-            self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
-            await node._session.close()
-            await self.close()
+    @commands.Cog.listener()
+    async def on_disconnect(self) -> None:
+        """
+        The code in this event is executed when the bot disconnects from the Discord server.
+        """
+        await self.database.close()
+        await self.database.connection.close()
+        await self.close()
 
 load_dotenv()
 
