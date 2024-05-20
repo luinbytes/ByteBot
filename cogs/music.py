@@ -39,7 +39,7 @@ class Music(commands.Cog, name="music"):
             embed.set_thumbnail(url=payload.track.artwork)
         embed.add_field(name="Duration:", value=track_duration, inline=True)
         embed.add_field(name="Queue", value=f"{len(player.queue)} songs", inline=True)
-        embed.set_footer(name="Source:", value=f"{track.source.capitalize()}", inline=True)
+        embed.set_footer(text=f"Source: {track.source.capitalize()}")
         await self.channel.send(embed=embed)
 
     @commands.Cog.listener()
