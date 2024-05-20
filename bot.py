@@ -8,7 +8,6 @@ import wavelink
 import aiosqlite
 import discord
 
-from wavelink import NodeStatus
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
