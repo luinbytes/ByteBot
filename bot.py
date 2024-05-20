@@ -309,7 +309,7 @@ class DiscordBot(commands.Bot):
         """
         node: wavelink.Node = wavelink.Node(
             uri="http://lavalink:2333",
-            password="nsftZKV3B81V9UbPCDDe9Xr48fDwxs",
+            password="youshallnotpass",
             retries=25
         )
         if await wavelink.Pool.connect(client=self, nodes=[node]):
