@@ -131,4 +131,4 @@ class SteamTools(commands.Cog, name="steamtools"):
     #     await self.bot.wait_until_ready()
 
 async def setup(bot) -> None:
-    await bot.add_cog(SteamTracker(bot))
+    await bot.add_cog(SteamTools(bot))
