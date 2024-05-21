@@ -103,11 +103,11 @@ def calc_hand(hand: List[Card]) -> int:
                 total += 1
     return total
 
-def check_bet(ctx: Context, bet: int) -> None:
+def check_bet(context: Context, bet: int) -> None:
     bet = int(bet)
     if bet < 10:
         raise commands.errors.BadArgument()
-    user_id = ctx.author.id
+    user_id = context.author.id
     c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
     result = c.fetchone()
     if not result or bet > result[0]:
@@ -127,6 +127,8 @@ class Currency(commands.Cog, name="currency"):
     async def save_config(self, config):
         with open('config.json', 'w') as f:
             json.dump(config, f, indent=4)
+
+    is_gamble_in_progress = False
 
     @commands.hybrid_command(
         name="roll",
@@ -249,8 +251,6 @@ class Currency(commands.Cog, name="currency"):
             return
 
         config = await self.load_config()
-        def check(reaction, user):
-            return user == context.author
 
         try:
             bet_amount = int(amount)
@@ -285,6 +285,7 @@ class Currency(commands.Cog, name="currency"):
                     self.value = 'l'
                     self.stop()
 
+            self.is_gamble_in_progress = True
             number = random.randint(1, 30)
             buttons = holChoice(context.author)
             embed = discord.Embed(
@@ -312,7 +313,7 @@ class Currency(commands.Cog, name="currency"):
                 if (next_number > number and guess == 'h') or (next_number < number and guess == 'l'):
                     winnings = math.floor(bet_amount * config["win_multiplier"])
                     embed = discord.Embed(
-                        title="Higher or Lower!",
+                        title="Game Over!",
                         description="Congratulations! You guessed correctly. You won {} coins! 🪙".format(winnings),
                         color=discord.Color.green()
                     )
@@ -322,10 +323,11 @@ class Currency(commands.Cog, name="currency"):
                     await message.edit(embed=embed)
                     c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
                     conn.commit()
+                    self.is_gamble_in_progress = False
                 else:
                     losses = math.floor(bet_amount * config["loss_multiplier"])
                     embed = discord.Embed(
-                        title="Higher or Lower!",
+                        title="Game Over!",
                         description=f"Sorry, you guessed incorrectly.  You lost {losses} coins.",
                         color=discord.Color.red()
                     )
@@ -335,6 +337,7 @@ class Currency(commands.Cog, name="currency"):
                     await message.edit(embed=embed)
                     c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
                     conn.commit()
+                    self.is_gamble_in_progress = False
 
             except asyncio.TimeoutError:
                 embed = discord.Embed(
@@ -344,6 +347,7 @@ class Currency(commands.Cog, name="currency"):
                 )
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 await message.edit(embed=embed)
+                self.is_gamble_in_progress = False
 
         except asyncio.TimeoutError:
             embed = discord.Embed(
@@ -353,6 +357,7 @@ class Currency(commands.Cog, name="currency"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
+            self.is_gamble_in_progress = False
 
     @commands.hybrid_command(
         name="balance",
@@ -493,6 +498,18 @@ class Currency(commands.Cog, name="currency"):
         :param amount: The amount of coins to send.
         """
         sender_id = context.author.id
+
+        # Check if user is currently gambling
+        if self.is_gamble_in_progress:
+            embed = discord.Embed(
+                title="LMAO you thought bitch!",
+                description="You are currently gambling. Please wait for the current game to end before sending coins.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"{context.author.name} is naughty and tried to exploit!", icon_url=context.author.avatar)
+            embed.set_image(url="https://media1.tenor.com/m/tNobasRpxvoAAAAC/%D0%BA%D0%BB%D0%BE%D1%83%D0%BD.gif")
+            await context.send(embed=embed)
+            return
 
         # Check if sender is registered
         c.execute("SELECT user_id FROM users WHERE user_id = ?", (sender_id,))
@@ -668,6 +685,7 @@ class Currency(commands.Cog, name="currency"):
             await context.send(embed=embed)
             return
 
+        self.is_gamble_in_progress = True
         deck = [Card(suit, num) for num in range(2, 15) for suit in Card.suits]
         random.shuffle(deck)
 
@@ -704,12 +722,14 @@ class Currency(commands.Cog, name="currency"):
                 c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
                 conn.commit()
                 result = ("🪙 Blackjack!", 'won')
+                self.is_gamble_in_progress = False
                 break
             elif player_score > 21:
                 losses = math.floor(bet_amount * 0.90)
                 c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ("Player busts", 'lost')
+                self.is_gamble_in_progress = False
                 break
 
             msg = await out_table(
@@ -768,6 +788,7 @@ class Currency(commands.Cog, name="currency"):
                 result = ("🪙 You win!", 'won')
 
         color = discord.Color.red() if result[1] == 'lost' else discord.Color.green() if result[1] == 'won' else discord.Color.blue()
+        self.is_gamble_in_progress = False
         coin_type = bet_amount
         if result[1] == 'lost':
             coin_type = losses
@@ -783,6 +804,7 @@ class Currency(commands.Cog, name="currency"):
                 description=f"**You {result[1]} {coin_type} coins!**\nYour hand: {player_score}\nDealer's hand: {dealer_score}"
             )
             os.remove(f'./{context.author.id}.png')
+            self.is_gamble_in_progress = False
 
         except asyncio.TimeoutError:
             embed = discord.Embed(
@@ -792,6 +814,7 @@ class Currency(commands.Cog, name="currency"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
+            self.is_gamble_in_progress = False
 
     @commands.hybrid_command(
         title="rates",
