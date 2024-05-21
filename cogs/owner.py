@@ -462,7 +462,7 @@ class Owner(commands.Cog, name="owner"):
         name="setcolourroleprice",
         description="Set the price of a colour role.",
         usage="<price>",
-        aliases=["colourroleprice", "setcolourprice", "setcolourrole"]
+        aliases=["colourroleprice", "setcolourrole"]
     )
     @app_commands.describe(price="The price of the colour role.")
     @commands.is_owner()
