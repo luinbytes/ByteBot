@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord import app_commands
 
-class SteamTracker(commands.Cog):
+class SteamTools(commands.Cog, name="steamtools"):
     def __init__(self, bot):
         self.bot = bot
         self.db = sqlite3.connect('database/tracked_steamids.db')
