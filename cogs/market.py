@@ -176,6 +176,26 @@ class Market(commands.Cog, name="market"):
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="setcolourprice",
+        description="Set the price of colour roles",
+        usage="setprice <price>",
+        aliases=["setcolourpricing", "setcolourcost"]
+    )
+    @commands.is_owner()
+    async def set_colour_price(self, context: Context, price: int) -> None:
+        config = await self.load_config()
+        config["market_colour_pricing"] = price
+        await self.save_config(config)
+
+        embed = discord.Embed(
+            title="Market",
+            description=f"Colour role pricing set to `{price}`.",
+            color=discord.Colour.green()
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
+
 @commands.Cog.listener()
 async def on_disconnect(self):
     conn.close()
