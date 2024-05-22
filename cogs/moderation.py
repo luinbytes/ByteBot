@@ -42,14 +42,14 @@ def guild_autoroles(db, guild_id, role_id=None):
     db = db_conn.cursor()
     if role_id is not None:
         # Write to the table
-        db.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
-        db.commit()
+        db.execute("INSERT OR REPLACE INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
+        db_conn.commit()
     else:
         # Read from the table
         cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id))
         row = cursor.fetchone()
         return row[0] if row else None
-    db.close()
+    db_conn.close()
 
 def guild_starboard_channels(db, guild_id, channel_id=None, starboard_min_reactions=None):
     db_conn = sqlite3.connect(DB_PATH)
