@@ -248,7 +248,7 @@ class DiscordBot(commands.Bot):
         db_conn.close()
             
 
-        # await self.connect_nodes()
+        await self.connect_nodes()
 
     async def on_message(self, message: discord.Message) -> None:
         """
