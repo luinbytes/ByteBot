@@ -46,7 +46,7 @@ def guild_autoroles(db, guild_id, role_id=None):
         db_conn.commit()
     else:
         # Read from the table
-        cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id))
+        cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
         row = cursor.fetchone()
         return row[0] if row else None
     db_conn.close()
@@ -563,14 +563,12 @@ class Moderation(commands.Cog, name="moderation"):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         # Get starboard channels and minimum reactions from the database
-        
-        min_reactions = config.get('starboard_min_reactions')
+        starboard_channel_id, min_reactions = guild_starboard_channels(self, payload.guild_id)
         if payload.emoji.name == "⭐":
             channel = self.bot.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
             reaction = [react for react in message.reactions if str(react.emoji) == "⭐"][0]
             if reaction and reaction.count >= min_reactions:
-                starboard_channel_id = config.get('starboard', {}).get(str(reaction.message.guild.id))
                 if starboard_channel_id:
                     starboard_channel = reaction.message.guild.get_channel(int(starboard_channel_id))
                     if starboard_channel:
