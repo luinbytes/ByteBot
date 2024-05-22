@@ -16,11 +16,11 @@ class SteamTools(commands.Cog, name="steamtools"):
         aliases=["sid"]
     )
     @app_commands.describe(
-        steamID="The steamID of the user to scrape info from."
+        steamuserid="The steamID of the user to scrape info from."
     )
-    async def steamid(self, context: Context, steamID: str) -> None:
+    async def steamid(self, context: Context, steamuserid: str) -> None:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f'https://api.snaz.in/v2/steam/user-profile/{steamID}') as r:
+            async with session.get(f'https://api.snaz.in/v2/steam/user-profile/{steamuserid}') as r:
                 if r.status == 200:
                     data = await r.json()
                     embed = discord.Embed(
