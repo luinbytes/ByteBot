@@ -1,9 +1,32 @@
 import aiohttp
 import discord
+import sqlite3
+import os
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord import app_commands
 from xml.etree import ElementTree as ET
+
+DATABASE_DIR = "database"
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
+
+def guild_prefix(db, guild_id, prefix=None):
+    db_conn = sqlite3.connect(DB_PATH)
+    db = db_conn.cursor()
+    if prefix is not None:
+        # Write to the table
+        try:
+            db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+        except sqlite3.IntegrityError:
+            db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+        db_conn.commit()
+    else:
+        # Read from the table
+        cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+    db.close()
 
 class Utilities(commands.Cog, name="utilities"):
     def __init__(self, bot) -> None:
@@ -198,7 +221,29 @@ class Utilities(commands.Cog, name="utilities"):
             color=0xBEBEFE
         )
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-        await context.send(embed=embed)  
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="prefix",
+        description="Get the current prefix for the server.",
+    )
+    async def display_prefix(self, context: Context) -> None:
+        """
+        Get the current prefix for the server.
+
+        :param context: The hybrid command context.
+        """
+        prefix = guild_prefix(self, context.guild.id)
+        if prefix is None:
+            prefix = "!"
+
+        embed = discord.Embed(
+            title="Prefix",
+            description=f"The current prefix for this server is `{prefix}`",
+            color=0xBEBEFE,
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
 
 async def setup(bot) -> None:
     await bot.add_cog(Utilities(bot))

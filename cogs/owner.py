@@ -8,7 +8,7 @@ import json
 
 DATABASE_DIR = "database"
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DATABASE_DIR, "currency.db")
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
@@ -27,6 +27,51 @@ class Owner(commands.Cog, name="owner"):
     async def save_config(self, config):
         with open('config.json', 'w') as f:
             json.dump(config, f, indent=4)
+
+    def guild_prefix(db, guild_id, prefix=None):
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        if prefix is not None:
+            # Write to the table
+            try:
+                db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+            except sqlite3.IntegrityError:
+                db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+            db_conn.commit()
+        else:
+            # Read from the table
+            cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+        db.close()
+
+    def guild_autoroles(db, guild_id, role_id=None):
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        if role_id is not None:
+            # Write to the table
+            db.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
+            db.commit()
+        else:
+            # Read from the table
+            cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+        db.close()
+
+    def guild_starboard_channels(db, guild_id, channel_id=None, starboard_min_reactions=None):
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        if channel_id is not None and starboard_min_reactions is not None:
+            # Write to the table
+            db.execute("INSERT INTO GuildStarboardChannels (guild_id, channel_id, starboard_min_reactions) VALUES (?, ?, ?)", (guild_id, channel_id, starboard_min_reactions))
+            db.commit()
+        else:
+            # Read from the table
+            cursor = db.execute("SELECT channel_id, starboard_min_reactions FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
+            row = cursor.fetchone()
+            return row if row else None
+        db.close()
 
     @commands.command(
         name="sync",
@@ -315,7 +360,7 @@ class Owner(commands.Cog, name="owner"):
         """
         user_id = user.id
 
-        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT user_id FROM UserEconomy WHERE user_id = ?", (user_id,))
         user_data = c.fetchone()
         if not user_data:
             embed = discord.Embed(
@@ -327,7 +372,7 @@ class Owner(commands.Cog, name="owner"):
             await context.send(embed=embed)
             return
 
-        c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+        c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
         conn.commit()
 
         embed = discord.Embed(
@@ -354,7 +399,7 @@ class Owner(commands.Cog, name="owner"):
         """
         user_id = user.id
 
-        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT user_id FROM UserEconomy WHERE user_id = ?", (user_id,))
         user_data = c.fetchone()
         if not user_data:
             embed = discord.Embed(
@@ -366,7 +411,7 @@ class Owner(commands.Cog, name="owner"):
             await ctx.send(embed=embed)
             return
         
-        c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
+        c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
         conn.commit()
 
         embed = discord.Embed(
@@ -393,7 +438,7 @@ class Owner(commands.Cog, name="owner"):
         user_id = user.id
 
         # Check if user is registered
-        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT user_id FROM UserEconomy WHERE user_id = ?", (user_id,))
         user_data = c.fetchone()
         if not user_data:
             embed = discord.Embed(
@@ -406,7 +451,7 @@ class Owner(commands.Cog, name="owner"):
             return
 
         # Reset user's balance to 0
-        c.execute("UPDATE users SET balance = 0 WHERE user_id = ?", (user_id,))
+        c.execute("UPDATE UserEconomy SET balance = 0 WHERE user_id = ?", (user_id,))
         conn.commit()
 
         embed = discord.Embed(
@@ -434,7 +479,7 @@ class Owner(commands.Cog, name="owner"):
         user_id = user.id
 
         # Check if user is registered
-        c.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT user_id FROM UserEconomy WHERE user_id = ?", (user_id,))
         user_data = c.fetchone()
         if not user_data:
             embed = discord.Embed(
@@ -447,7 +492,7 @@ class Owner(commands.Cog, name="owner"):
             return
 
         # Update user's balance to the specified amount
-        c.execute("UPDATE users SET balance = ? WHERE user_id = ?", (amount, user_id))
+        c.execute("UPDATE UserEconomy SET balance = ? WHERE user_id = ?", (amount, user_id))
         conn.commit()
 
         embed = discord.Embed(

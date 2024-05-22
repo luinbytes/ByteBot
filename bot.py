@@ -7,6 +7,7 @@ import sys
 import wavelink
 import aiosqlite
 import discord
+import sqlite3
 
 from wavelink import NodeStatus
 from discord.ext import commands, tasks
@@ -66,9 +67,11 @@ intents.members = True
 intents.message_content = True
 intents.presences = True
 
+DATABASE_DIR = "database"
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
+
 # Setup both of the loggers
-
-
 class LoggingFormatter(logging.Formatter):
     # Colors
     black = "\x1b[30m"
@@ -119,23 +122,53 @@ logger.addHandler(file_handler)
 
 
 class DiscordBot(commands.Bot):
+    db_conn = sqlite3.connect(DB_PATH)
+    db = db_conn.cursor()
+
     def __init__(self) -> None:
+        async def get_prefix(bot, message: discord.Message) -> str:
+            db_conn = sqlite3.connect(DB_PATH)
+            db = db_conn.cursor()
+            guild_id = message.guild.id if message.guild else None
+            prefix = self.guild_prefix(db, guild_id)
+            return commands.when_mentioned_or(prefix)(bot, message)
+
         super().__init__(
-            command_prefix=commands.when_mentioned_or(config["prefix"]),
+            command_prefix=get_prefix,
             intents=intents,
             help_command=None,
         )
-        """
-        This creates custom bot variables so that we can access these variables in cogs more easily.
-
-        For example, The config is available using the following code:
-        - self.config # In this class
-        - bot.config # In this file
-        - self.bot.config # In cogs
-        """
         self.logger = logger
         self.config = config
         self.database = None
+
+    def guild_prefix(self, db, guild_id, prefix=None):
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        if prefix is not None:
+            # Write to the table
+            db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+            db_conn.commit()
+        else:
+            # Read from the table
+            cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+        db.close()
+
+    def guild_autoroles(db, guild_id, role_id=None):
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        if role_id is not None:
+            # Write to the table
+            db.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
+            db.commit()
+        else:
+            # Read from the table
+            cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+        db.close()
 
     async def init_db(self) -> None:
         async with aiosqlite.connect(
@@ -202,7 +235,20 @@ class DiscordBot(commands.Bot):
                 f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
             )
         )
-        await self.connect_nodes()
+
+    async def on_ready(self):
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        for guild in self.guilds:
+            prefix = self.guild_prefix(db, guild.id)
+            if prefix is None:
+                self.guild_prefix(db, guild.id, '>')
+                self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
+                # self.logger.info(f"Prefix for guild {guild.id} is {prefix}")
+        db_conn.close()
+            
+
+        # await self.connect_nodes()
 
     async def on_message(self, message: discord.Message) -> None:
         """

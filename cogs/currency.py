@@ -18,20 +18,7 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DATABASE_DIR = "database"
 if not os.path.exists(DATABASE_DIR):
     os.makedirs(DATABASE_DIR)
-
-# Ensure database exists
-DB_PATH = os.path.join(DATABASE_DIR, "currency.db")
-if not os.path.exists(DB_PATH):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE users (
-                    user_id INTEGER PRIMARY KEY,
-                    username TEXT,
-                    balance INTEGER DEFAULT 0,
-                    last_roll TEXT
-                )''')
-    conn.commit()
-    conn.close()
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
@@ -108,7 +95,7 @@ def check_bet(context: Context, bet: int) -> None:
     if bet < 10:
         raise commands.errors.BadArgument()
     user_id = context.author.id
-    c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+    c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
     result = c.fetchone()
     if not result or bet > result[0]:
         raise commands.errors.InsufficientFundsException(result[0] if result else 0, bet)
@@ -142,16 +129,16 @@ class Currency(commands.Cog, name="currency"):
         :param context: The application command context.
         """
         user_id = context.author.id
-        c.execute("SELECT last_roll FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT last_roll FROM UserEconomy WHERE user_id = ?", (user_id,))
         result = c.fetchone()
         if result:
             last_roll_date = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S") if result[0] else datetime.min
             current_time = datetime.now()
             if (current_time - last_roll_date).total_seconds() >= 1800:  # 0.5 hour in seconds
                 # Roll dice
-                earnings = random.randint(25, 500)
-                c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
-                c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (current_time.strftime("%Y-%m-%d %H:%M:%S"), user_id))
+                earnings = random.randint(25, 1000)
+                c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
+                c.execute("UPDATE UserEconomy SET last_roll = ? WHERE user_id = ?", (current_time.strftime("%Y-%m-%d %H:%M:%S"), user_id))
                 conn.commit()
                 embed = discord.Embed(
                     title="🪙 Coin Reward",
@@ -182,13 +169,13 @@ class Currency(commands.Cog, name="currency"):
         :param context: The application command context.
         """
         user_id = context.author.id
-        c.execute("INSERT INTO users (user_id, username, last_roll) VALUES (?, ?, ?)", (user_id, str(context.author), datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        c.execute("INSERT INTO UserEconomy (user_id, user_name, balance, last_roll) VALUES (?, ?, ?, ?)", (user_id, str(context.author), 0, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         conn.commit()
         #await context.send("You have been registered and can now roll the dice to earn coins.")
         # Roll dice
-        earnings = random.randint(25, 250)
-        c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
-        c.execute("UPDATE users SET last_roll = ? WHERE user_id = ?", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id))
+        earnings = random.randint(25, 1000)
+        c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (earnings, user_id))
+        c.execute("UPDATE UserEconomy SET last_roll = ? WHERE user_id = ?", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id))
         conn.commit()
         embed = discord.Embed(
             title="🪙 Coin Reward",
@@ -205,7 +192,7 @@ class Currency(commands.Cog, name="currency"):
         :param context: The application command context.
         """
         user_id = context.author.id
-        c.execute("INSERT INTO users (user_id, username) VALUES (?, ?)", (user_id, str(context.author)))
+        c.execute("INSERT INTO UserEconomy (user_id, user_name) VALUES (?, ?)", (user_id, str(context.author)))
         conn.commit()
 
     @commands.hybrid_command(
@@ -223,7 +210,7 @@ class Currency(commands.Cog, name="currency"):
         :param context: The application command context.
         """
         user_id = context.author.id
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
         result = c.fetchone()
         if not result:
             await self.register_user(context)
@@ -321,7 +308,7 @@ class Currency(commands.Cog, name="currency"):
                     embed.add_field(name="Guess:", value=f"You guessed `{button_value}`.", inline=False)
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await message.edit(embed=embed)
-                    c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
+                    c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
                     conn.commit()
                     self.is_gamble_in_progress = False
                 else:
@@ -335,7 +322,7 @@ class Currency(commands.Cog, name="currency"):
                     embed.add_field(name="Guess:", value=f"You guessed `{button_value}`.", inline=False)
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await message.edit(embed=embed)
-                    c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
+                    c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
                     conn.commit()
                     self.is_gamble_in_progress = False
 
@@ -375,7 +362,7 @@ class Currency(commands.Cog, name="currency"):
             user = context.author
         
         user_id = user.id
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
         result = c.fetchone()
         
         if result:
@@ -413,7 +400,7 @@ class Currency(commands.Cog, name="currency"):
         user_id = context.author.id
 
         # Check if user is registered
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
         user_data = c.fetchone()
         if not user_data:
             embed = discord.Embed(
@@ -463,13 +450,13 @@ class Currency(commands.Cog, name="currency"):
         result = random.choice(["win", "lose"])
         if result == "win":
             winnings = math.floor(amount * config["win_multiplier"])
-            c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
+            c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (winnings, user_id))
             conn.commit()
             message = f"🪙 You won {winnings} coins! 🪙"
             color = discord.Color.green()
         else:
             losses = math.floor(amount * config["loss_multiplier"])
-            c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
+            c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (losses, user_id))
             conn.commit()
             message = f"You lost {losses} coins!"
             color = discord.Color.red()
@@ -512,7 +499,7 @@ class Currency(commands.Cog, name="currency"):
             return
 
         # Check if sender is registered
-        c.execute("SELECT user_id FROM users WHERE user_id = ?", (sender_id,))
+        c.execute("SELECT user_id FROM UserEconomy WHERE user_id = ?", (sender_id,))
         sender_data = c.fetchone()
         if not sender_data:
             embed = discord.Embed(
@@ -545,7 +532,7 @@ class Currency(commands.Cog, name="currency"):
             return
 
         # Check if sender has enough balance
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (sender_id,))
+        c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (sender_id,))
         sender_balance_data = c.fetchone()
         if sender_balance_data is None:
             embed = discord.Embed(
@@ -571,7 +558,7 @@ class Currency(commands.Cog, name="currency"):
         recipient_id = user.id
 
         # Check if recipient is registered
-        c.execute("SELECT user_id FROM users WHERE user_id = ?", (recipient_id,))
+        c.execute("SELECT user_id FROM UserEconomy WHERE user_id = ?", (recipient_id,))
         recipient_data = c.fetchone()
         if not recipient_data:
             embed = discord.Embed(
@@ -584,11 +571,11 @@ class Currency(commands.Cog, name="currency"):
             return
 
         # Update sender's balance
-        c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, sender_id))
+        c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (amount, sender_id))
         conn.commit()
 
         # Update recipient's balance
-        c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, recipient_id))
+        c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (amount, recipient_id))
         conn.commit()
         embed = discord.Embed(
             title="🪙 Coins Sent",
@@ -608,7 +595,7 @@ class Currency(commands.Cog, name="currency"):
         Display the top users with the highest balances.
         """
         # Fetch top 10 users with the highest balance
-        c.execute("SELECT user_id, balance FROM users ORDER BY balance DESC LIMIT 10")
+        c.execute("SELECT user_id, balance FROM UserEconomy ORDER BY balance DESC LIMIT 10")
         top_users = c.fetchall()
 
         if not top_users:
@@ -647,7 +634,7 @@ class Currency(commands.Cog, name="currency"):
     @app_commands.describe(bet_amount="The amount you want to bet in blackjack, minimum is 10 coins.")
     async def blackjack(self, context: Context, bet_amount: int) -> None:
         user_id = context.author.id
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
         result = c.fetchone()
         if not result:
             await self.register_user_hol(context)
@@ -719,14 +706,14 @@ class Currency(commands.Cog, name="currency"):
             dealer_score = calc_hand(dealer_hand)
             config = await self.load_config()
             if player_score == 21:
-                c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
+                c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
                 conn.commit()
                 result = ("🪙 Blackjack!", 'won')
                 self.is_gamble_in_progress = False
                 break
             elif player_score > 21:
                 losses = math.floor(bet_amount * 0.90)
-                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
+                c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ("Player busts", 'lost')
                 self.is_gamble_in_progress = False
@@ -769,21 +756,21 @@ class Currency(commands.Cog, name="currency"):
             losses = math.floor(bet_amount * 0.9)
 
             if dealer_score == 21:
-                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
+                c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ('Dealer blackjack', 'lost')
             elif dealer_score > 21:
-                c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
+                c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
                 conn.commit()
                 result = ("Dealer busts", 'won')
             elif dealer_score == player_score:
                 result = ("Tie!", 'kept')
             elif dealer_score > player_score:
-                c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
+                c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ("You lose!", 'lost')
             else:
-                c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
+                c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (bet_amount, context.author.id))
                 conn.commit()
                 result = ("🪙 You win!", 'won')
 

@@ -9,6 +9,67 @@ from discord.ext.commands import Context
 import sqlite3
 import re
 
+DATABASE_DIR = "database"
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
+
+def guild_prefix(db, guild_id, prefix=None):
+    db_conn = sqlite3.connect(DB_PATH)
+    db = db_conn.cursor()
+    if prefix is not None:
+        # Write to the table
+        try:
+            db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+        except sqlite3.IntegrityError:
+            db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+        db_conn.commit()
+    else:
+        # Read from the table
+        cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id))
+        row = cursor.fetchone()
+        return row[0] if row else None
+    db.close()
+
+def update_guild_prefix(db, guild_id, prefix):
+    db_conn = sqlite3.connect(DB_PATH)
+    db = db_conn.cursor()
+    db.execute("INSERT OR REPLACE INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+    db_conn.commit()
+    db.close()
+
+def guild_autoroles(db, guild_id, role_id=None):
+    db_conn = sqlite3.connect(DB_PATH)
+    db = db_conn.cursor()
+    if role_id is not None:
+        # Write to the table
+        db.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
+        db.commit()
+    else:
+        # Read from the table
+        cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id))
+        row = cursor.fetchone()
+        return row[0] if row else None
+    db.close()
+
+def guild_starboard_channels(db, guild_id, channel_id=None, starboard_min_reactions=None):
+    db_conn = sqlite3.connect(DB_PATH)
+    db = db_conn.cursor()
+    if channel_id is not None:
+        if starboard_min_reactions is not None:
+            # Write to the table
+            db.execute("INSERT INTO GuildStarboardChannels (guild_id, channel_id, starboard_min_reactions) VALUES (?, ?, ?)", (guild_id, channel_id, starboard_min_reactions))
+            db_conn.commit()
+        else:
+            # Write to the table
+            db.execute("INSERT INTO GuildStarboardChannels (guild_id, channel_id) VALUES (?, ?)", (guild_id, channel_id))
+            db_conn.commit()
+    else:
+        # Read from the table
+        cursor = db.execute("SELECT channel_id, starboard_min_reactions FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
+        row = cursor.fetchone()
+        return row if row else None
+    db_conn.close()
+
 class Moderation(commands.Cog, name="moderation"):
     def __init__(self, bot) -> None:
         self.bot = bot
@@ -23,18 +84,6 @@ class Moderation(commands.Cog, name="moderation"):
     async def save_config(self, config):
         with open('config.json', 'w') as f:
             json.dump(config, f, indent=4)
-
-    async def update_autorole_config(self, guild_id, role_id):
-        config = await self.load_config()
-        config.setdefault("autorole", {})
-        config["autorole"][str(guild_id)] = str(role_id)
-        await self.save_config(config)
-
-    async def update_starboard_config(self, guild_id, channel_id):
-        config = await self.load_config()
-        config.setdefault("starboard", {})
-        config["starboard"][str(guild_id)] = str(channel_id)
-        await self.save_config(config)
 
     @commands.hybrid_command(
         name="kick",
@@ -414,7 +463,7 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def autorole(self, context: Context, role: discord.Role):
-        await self.update_autorole_config(context.guild.id, role.id)
+        guild_autoroles(self, context.guild.id, role.id)
         
         for member in context.guild.members:
             if not member.bot:
@@ -428,8 +477,7 @@ class Moderation(commands.Cog, name="moderation"):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        config = await self.load_config()
-        autorole_id = config.get(str(member.guild.id))
+        autorole_id = guild_autoroles(self, member.guild.id)
         if autorole_id:
             role = member.guild.get_role(autorole_id)
             if role:
@@ -443,9 +491,7 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def starboard(self, context: Context, channel: discord.TextChannel):
-        config = await self.load_config()
-        guild_config = config.get("starboard", {})
-        if guild_config.get(str(context.guild.id)) == str(channel.id):
+        if channel.id == guild_starboard_channels(self, context.guild.id):
             embed = discord.Embed(
                 title="Starboard already set",
                 description=f"The starboard channel is already set to {channel.mention}.",
@@ -453,7 +499,7 @@ class Moderation(commands.Cog, name="moderation"):
             )
             await context.send(embed=embed)
         else:
-            await self.update_starboard_config(context.guild.id, channel.id)
+            guild_starboard_channels(self, context.guild.id, channel.id)
             embed = discord.Embed(
                 title="Starboard Channel Set",
                 description=f"The starboard channel has been set to {channel.mention}.",
@@ -499,24 +545,25 @@ class Moderation(commands.Cog, name="moderation"):
         :param coins: The number of coins to award.
 
         """
-        conn = sqlite3.connect("database/currency.db")
+        conn = sqlite3.connect("database/database.db")
         c = conn.cursor()
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+        c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
         result = c.fetchone()
         if result:
             # User is registered, award coins
-            c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (coins, user_id))
+            c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (coins, user_id))
             conn.commit()
         else:
             # User is not registered, register them and award coins
             user = self.bot.get_user(user_id)
             username = user.name if user else "Unknown User"
-            c.execute("INSERT INTO users (user_id, username, balance) VALUES (?, ?, ?)", (user_id, username, coins))
+            c.execute("INSERT INTO UserEconomy (user_id, user_name, balance) VALUES (?, ?, ?)", (user_id, username, coins))
             conn.commit()
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        config = await self.load_config()
+        # Get starboard channels and minimum reactions from the database
+        
         min_reactions = config.get('starboard_min_reactions')
         if payload.emoji.name == "⭐":
             channel = self.bot.get_channel(payload.channel_id)
@@ -542,7 +589,7 @@ class Moderation(commands.Cog, name="moderation"):
                         embed.set_author(name=reaction.message.author.name, icon_url=reaction.message.author.avatar.url)
                         embed.set_footer(text=f"Original message in #{reaction.message.channel.name}")
                         embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})", inline=False)
-                        embed.add_field(name="Award", value="250 🪙", inline=True)
+                        embed.add_field(name="Award", value="1000 🪙", inline=True)
 
                         # Check if the message content is a URL to an image
                         url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
@@ -567,7 +614,7 @@ class Moderation(commands.Cog, name="moderation"):
 
                         # Award coins to the user who sent the message
                         user_id = message.author.id
-                        await self.award(user_id, coins=250)
+                        await self.award(user_id, coins=1000)
 
     @commands.hybrid_command(
         name="verifystarboard",
@@ -580,9 +627,9 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def verifystarboard(self, context: Context):
-        config = await self.load_config()
-        starboard_channel_id = config.get('starboard', {}).get(str(context.guild.id))
-        if starboard_channel_id:
+        starboard_channel_info = guild_starboard_channels(self, context.guild.id)
+        if starboard_channel_info:
+            starboard_channel_id, min_reactions = starboard_channel_info
             starboard_channel = context.guild.get_channel(int(starboard_channel_id))
             if starboard_channel:
                 embed = discord.Embed(
@@ -605,6 +652,24 @@ class Moderation(commands.Cog, name="moderation"):
                 color=0xE02B2B
             )
             await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="setprefix",
+        description="Sets the prefix for the server.",
+        usage="setprefix <prefix>",
+    )
+    @app_commands.describe(
+        prefix="The new prefix for the server."
+    )
+    @commands.has_permissions(administrator=True)
+    async def setprefix(self, context: Context, prefix: str):
+        update_guild_prefix(self, context.guild.id, prefix)
+        embed = discord.Embed(
+            title="Prefix Set",
+            description=f"The prefix for this server has been set to `{prefix}`.",
+            color=0xBEBEFE
+        )
+        await context.send(embed=embed)
 
 
 async def setup(bot) -> None:

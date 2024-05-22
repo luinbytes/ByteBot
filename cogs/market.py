@@ -9,7 +9,7 @@ from PIL import ImageColor
 
 DATABASE_DIR = "database"
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DATABASE_DIR, "currency.db")
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
@@ -160,7 +160,7 @@ class Market(commands.Cog, name="market"):
 
         # Deduct the amount from the user's balance
         new_balance = balance - price
-        c.execute("UPDATE users SET balance=? WHERE user_id=?", (new_balance, user_id))
+        c.execute("UPDATE UserEconomy SET balance=? WHERE user_id=?", (new_balance, user_id))
         conn.commit()
 
         for role in colour_roles:
