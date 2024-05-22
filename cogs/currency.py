@@ -148,7 +148,7 @@ class Currency(commands.Cog, name="currency"):
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 await context.send(embed=embed)
             else:
-                time_remaining = timedelta(seconds=3600) - (current_time - last_roll_date)
+                time_remaining = timedelta(seconds=1800) - (current_time - last_roll_date)
                 hours, remainder = divmod(time_remaining.seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 embed = discord.Embed(
