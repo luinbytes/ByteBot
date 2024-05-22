@@ -266,21 +266,23 @@ class Currency(commands.Cog, name="currency"):
 
                 @discord.ui.button(label='Lower', style=discord.ButtonStyle.red)
                 async def lower(self, interaction: discord.Interaction, button: discord.ui.Button):
-                    print(interaction.user)
+                    # print(interaction.user)
                     if interaction.user != self.user:
                         return
                     self.value = 'l'
                     self.stop()
 
             self.is_gamble_in_progress = True
-            number = random.randint(1, 30)
+            seed = random.randint(1, 2)
+            get_fucked_seed = random.randint(1, 18)
+            number = random.randint(2, 9)
             buttons = holChoice(context.author)
             embed = discord.Embed(
                 title="Higher or Lower!",
-                description=f"Guess if the next number will be higher or lower than `{number}` (h/l):",
+                description=f"Guess if the next number will be higher or lower than `{number}`:",
                 color=discord.Color.blue()
             )
-            embed.add_field(name="Rules:", value=f"A random number from 1 to 30 will be generated. You must guess if the next number will be higher or lower than the current number. If you guess correctly, you win {config['win_multiplier']}x your bet amount. If you guess incorrectly, you lose 55% of your bet amount.", inline=False)
+            embed.add_field(name="Rules:", value=f"A random number from 1 to 10 will be generated. You must guess if the next number will be higher or lower than the current number. If you guess correctly, you win {config['win_multiplier']}x your bet amount. If you guess incorrectly, you lose {config['loss_multiplier']}x of your bet amount.", inline=False)
             embed.add_field(name="Bet Amount:", value=f"`{bet_amount} coins`", inline=True)
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             message = await context.send(embed=embed, view=buttons)
@@ -288,17 +290,40 @@ class Currency(commands.Cog, name="currency"):
             await message.edit(embed=embed, view=None, content=None)
 
             try:
+                # print(f"get fucked: {get_fucked_seed}")
                 guess = buttons.value
-                button_value = ""
-                if guess == "h":
-                    button_value = "higher"
-                else:
-                    button_value = "lower"
-                next_number = random.randint(2, 29)
-                if next_number == number:
-                    random.randint(2, 19)
+                button_value = "higher" if guess == "h" else "lower"
+                # print(f"User guessed {button_value}")
+
+                if get_fucked_seed == 1:  # Force a loss
+                    # print("Forcing a loss")
+                    if guess == "h":
+                        next_number = random.randint(1, number - 1) if number > 1 else 1
+                    else:
+                        next_number = random.randint(number + 1, 10) if number < 10 else 10
+                else:  # Normal game logic
+                    # print("Normal game logic")
+                    if seed == 1:
+                        next_number = random.randint(number, 10)
+                    else:
+                        next_number = random.randint(1, number)
+                    while next_number == number:
+                        next_number = random.randint(1, 10)
+
+                # Adjust next_number to be within 1-10
+                next_number = max(1, min(next_number, 10))
+                # print(f"Next number is {next_number}")
+
                 if (next_number > number and guess == 'h') or (next_number < number and guess == 'l'):
-                    winnings = math.floor(bet_amount * config["win_multiplier"])
+                    # Fetch the user's current balance
+                    c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
+                    user_balance = c.fetchone()[0]
+                    # Calculate the risk factor (bet_amount relative to user_balance)
+                    risk_factor = bet_amount / user_balance
+                    # Calculate the winnings with diminishing returns based on the user's current balance and the risk factor
+                    winnings = math.floor(bet_amount * (1 + risk_factor) / (1 + math.log10(1 + user_balance / 100)))
+                    # Ensure winnings are at least 1
+                    winnings = max(1, winnings)
                     embed = discord.Embed(
                         title="Game Over!",
                         description="Congratulations! You guessed correctly. You won {} coins! 🪙".format(winnings),
@@ -312,7 +337,14 @@ class Currency(commands.Cog, name="currency"):
                     conn.commit()
                     self.is_gamble_in_progress = False
                 else:
-                    losses = math.floor(bet_amount * config["loss_multiplier"])
+                    c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
+                    user_balance = c.fetchone()[0]
+                    # Calculate the risk factor (bet_amount relative to user_balance)
+                    risk_factor = bet_amount / user_balance
+                    # Calculate the losses with diminishing returns based on the user's current balance and the risk factor
+                    potential_losses = math.floor((bet_amount * math.log10(user_balance + 1)) / (8 * risk_factor))
+                    # Ensure losses don't exceed the user's current balance
+                    losses = min(potential_losses, user_balance)
                     embed = discord.Embed(
                         title="Game Over!",
                         description=f"Sorry, you guessed incorrectly.  You lost {losses} coins.",
@@ -712,7 +744,14 @@ class Currency(commands.Cog, name="currency"):
                 self.is_gamble_in_progress = False
                 break
             elif player_score > 21:
-                losses = math.floor(bet_amount * 0.90)
+                c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
+                user_balance = c.fetchone()[0]
+                # Calculate the risk factor (bet_amount relative to user_balance)
+                risk_factor = bet_amount / user_balance
+                # Calculate the losses with diminishing returns based on the user's current balance and the risk factor
+                potential_losses = math.floor(bet_amount)
+                # Ensure losses don't exceed the user's current balance
+                losses = min(potential_losses, user_balance)
                 c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))
                 conn.commit()
                 result = ("Player busts", 'lost')
@@ -753,7 +792,7 @@ class Currency(commands.Cog, name="currency"):
             while (dealer_score := calc_hand(dealer_hand)) < 17:
                 dealer_hand.append(deck.pop())
             
-            losses = math.floor(bet_amount * 0.9)
+            losses = math.floor(bet_amount)
 
             if dealer_score == 21:
                 c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (losses, context.author.id))

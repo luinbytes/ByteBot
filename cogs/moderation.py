@@ -51,23 +51,27 @@ def guild_autoroles(db, guild_id, role_id=None):
         return row[0] if row else None
     db_conn.close()
 
-def guild_starboard_channels(db, guild_id, channel_id=None, starboard_min_reactions=None):
+def guild_starboard_channels(self, guild_id, starboard_min_reactions=None, channel_id=None):
+    # Connect to the database
     db_conn = sqlite3.connect(DB_PATH)
     db = db_conn.cursor()
+
+    # If both starboard_min_reactions and channel_id are None, read from the database
+    if starboard_min_reactions is None and channel_id is None:
+        db.execute("SELECT * FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
+        rows = db.fetchall()
+        return rows
+
+    # If starboard_min_reactions is not None, update the starboard_min_reactions column
+    if starboard_min_reactions is not None:
+        db.execute("UPDATE GuildStarboardChannels SET starboard_min_reactions = ? WHERE guild_id = ?", (starboard_min_reactions, guild_id))
+
+    # If channel_id is not None, update the channel_id column
     if channel_id is not None:
-        if starboard_min_reactions is not None:
-            # Write to the table
-            db.execute("INSERT INTO GuildStarboardChannels (guild_id, channel_id, starboard_min_reactions) VALUES (?, ?, ?)", (guild_id, channel_id, starboard_min_reactions))
-            db_conn.commit()
-        else:
-            # Write to the table
-            db.execute("INSERT INTO GuildStarboardChannels (guild_id, channel_id) VALUES (?, ?)", (guild_id, channel_id))
-            db_conn.commit()
-    else:
-        # Read from the table
-        cursor = db.execute("SELECT channel_id, starboard_min_reactions FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
-        row = cursor.fetchone()
-        return row if row else None
+        db.execute("UPDATE GuildStarboardChannels SET channel_id = ? WHERE guild_id = ?", (channel_id, guild_id))
+
+    # Commit the changes and close the connection
+    db_conn.commit()
     db_conn.close()
 
 class Moderation(commands.Cog, name="moderation"):
@@ -518,18 +522,18 @@ class Moderation(commands.Cog, name="moderation"):
         amount="The minimum amount of reactions needed to pin a message to the starboard."
     )
     async def sbreactionamount(self, context: Context, amount: int = None):
-        config = await self.load_config()
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
         if amount is None:
-            current_amount = config.get("starboard_min_reactions")
+            min_reactions = guild_starboard_channels(self, context.guild.id)
             embed = discord.Embed(
                 title="Current Starboard Reaction Amount",
-                description=f"The current minimum amount of reactions needed to pin a message to the starboard is `{current_amount}`.",
+                description=f"The current minimum amount of reactions needed to pin a message to the starboard is `{min_reactions}`.",
                 color=0xBEBEFE
             )
             await context.send(embed=embed)
         else:
-            config["starboard_min_reactions"] = amount
-            await self.save_config(config)
+            guild_starboard_channels(self, context.guild.id, amount)
             embed = discord.Embed(
                 title="Starboard Reaction Amount Set",
                 description=f"The minimum amount of reactions needed to pin a message to the starboard has been set to `{amount}`.",
@@ -562,23 +566,43 @@ class Moderation(commands.Cog, name="moderation"):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
+        # print("Reaction added")
+
         # Get starboard channels and minimum reactions from the database
-        starboard_channel_id, min_reactions = guild_starboard_channels(self, payload.guild_id)
+        result = guild_starboard_channels(self, payload.guild_id)
+        # print(result)
+        starboard_guild_id, starboard_channel_id, min_reactions = result[0]
+        # print(f"Starboard channel ID: {starboard_channel_id}, Minimum reactions: {min_reactions}")
+    
         if payload.emoji.name == "⭐":
+            # print("Star reaction detected")
+    
             channel = self.bot.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
             reaction = [react for react in message.reactions if str(react.emoji) == "⭐"][0]
+    
             if reaction and reaction.count >= min_reactions:
+                # print("Reaction count is greater than or equal to minimum reactions")
+    
                 if starboard_channel_id:
+                    # print("Starboard channel ID exists")
+    
                     starboard_channel = reaction.message.guild.get_channel(int(starboard_channel_id))
+    
                     if starboard_channel:
+                        # print("Starboard channel exists")
+    
                         # Check if the message is already in the starboard
                         starboard_messages = []
                         async for message in starboard_channel.history():
                             starboard_messages.append(message)
+    
                         if any(f"[Click here]({reaction.message.jump_url})" in embed.fields[0].value for message in starboard_messages for embed in message.embeds if embed.fields):
+                            # print("Message is already in the starboard")
                             return
-                        
+    
+                        # print("Creating embed")
+    
                         embed = discord.Embed(
                             title="⭐ Pinned!",
                             description=reaction.message.content,
@@ -588,30 +612,37 @@ class Moderation(commands.Cog, name="moderation"):
                         embed.set_footer(text=f"Original message in #{reaction.message.channel.name}")
                         embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})", inline=False)
                         embed.add_field(name="Award", value="1000 🪙", inline=True)
-
+    
                         # Check if the message content is a URL to an image
                         url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
                         urls = re.findall(url_pattern, reaction.message.content)
                         if urls:
+                            # print("URLs found in message content")
+    
                             for url in urls:
                                 if url.endswith(('.png', '.jpg', '.gif')):
+                                    # print("Image URL found")
                                     embed.set_image(url=url)
                                     break
-
+    
                         if reaction.message.attachments:
+                            # print("Message has attachments")
                             embed.set_image(url=reaction.message.attachments[0].url)
-
+    
+                        # print("Sending embed to starboard channel")
                         await starboard_channel.send(embed=embed)
+    
                         message_id = payload.message_id
                         channel_id = payload.channel_id
                         guild_id = payload.guild_id
-
+    
                         # Fetch the message that was reacted to
                         channel = self.bot.get_channel(channel_id)
                         message = await channel.fetch_message(message_id)
-
+    
                         # Award coins to the user who sent the message
                         user_id = message.author.id
+                        # print("Awarding coins to user")
                         await self.award(user_id, coins=1000)
 
     @commands.hybrid_command(

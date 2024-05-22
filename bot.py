@@ -277,6 +277,7 @@ class DiscordBot(commands.Bot):
             self.logger.info(
                 f"Executed {executed_command} command by {context.author} (ID: {context.author.id}) in DMs"
             )
+        await context.message.delete()
 
     async def on_command_error(self, context: Context, error) -> None:
         """
@@ -294,11 +295,13 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+            await context.message.delete()
         elif isinstance(error, commands.NotOwner):
             embed = discord.Embed(
                 description="You are not the owner of the bot!", color=0xE02B2B
             )
             await context.send(embed=embed)
+            await context.message.delete()
             if context.guild:
                 self.logger.warning(
                     f"{context.author} (ID: {context.author.id}) tried to execute an owner only command in the guild {context.guild.name} (ID: {context.guild.id}), but the user is not an owner of the bot."
@@ -315,6 +318,7 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+            await context.message.delete()
         elif isinstance(error, commands.BotMissingPermissions):
             embed = discord.Embed(
                 description="I am missing the permission(s) `"
@@ -323,6 +327,7 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+            await context.message.delete()
         elif isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
                 title="Error!",
@@ -331,6 +336,7 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+            await context.message.delete()
         elif isinstance(error, commands.CommandInvokeError) and isinstance(error.original, AttributeError) and error.original.args[0] == "'NoneType' object has no attribute 'mention'":
             embed = discord.Embed(
                 title="Error!",
@@ -338,13 +344,17 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
+            await context.message.delete()
         elif isinstance(error, commands.CommandNotFound):
             embed = discord.Embed(
                 title="Error!",
                 description="Command not found!",
                 color=0xE02B2B,
             )
+            embed.add_field(name="Failed Command: ", value=f"`{context.message.content}`", inline=False)
+            embed.add_field(name="Hint", value="Use `help` to see all available categories. Use `help <category>` to see all commands in a category.", inline=False)
             await context.send(embed=embed)
+            await context.message.delete()
             raise(error)
         else:
             raise error

@@ -18,7 +18,7 @@ class Images(commands.Cog, name="images"):
             async with session.get(
                 "https://api.thecatapi.com/v1/images/search"
             ) as request:
-                print(request.status)
+                # print(request.status)
                 if request.status == 200:
                     data = await request.json()
                     url = data[0]["url"]

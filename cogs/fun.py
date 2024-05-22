@@ -205,17 +205,17 @@ class Fun(commands.Cog, name="fun"):
         await context.send("Please make your choice", view=view)
 
     @commands.hybrid_command(
-        name="slap", 
-        description="Slap someone.",
-        usage="slap <@user>",
-        aliases=["smack"]
+        name="catslap", 
+        description="Cat-Slap someone.",
+        usage="catslap <@user>",
+        aliases=["slapcat", "catsmack"]
     )
     @app_commands.describe(
         user="The user to slap."
     )
     async def slap(self, context: Context, user: discord.Member = None) -> None:
         """
-        Slap someone.
+        Cat-Slap someone.
 
         :param context: The hybrid command context.
         :param user: The user to slap.
@@ -238,8 +238,8 @@ class Fun(commands.Cog, name="fun"):
         embed = discord.Embed()
         embed.set_image(url=random.choice(slap_array))
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-        await context.send(random.choice(slap_messages))
         await context.send(embed=embed)
+        await context.send(random.choice(slap_messages))
 
     @commands.hybrid_command(
         name="randommeme",
@@ -255,7 +255,7 @@ class Fun(commands.Cog, name="fun"):
             async with session.get(
                 "https://meme-api.com/gimme/"
             ) as request:
-                print(request.status)
+                # print(request.status)
                 if request.status == 200:
                     data = await request.json()
                     title = data.get("title", "No title available")
@@ -400,6 +400,99 @@ class Fun(commands.Cog, name="fun"):
                         color=0xE02B2B,
                     )
                     await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="action",
+        description="Perform a variety of actions on a user.",
+        usage="<action> <@user>",
+        aliases=["performaction", "perform"]
+    )
+    @app_commands.describe(
+        user="The user to perform the action on.",
+        action="The action to perform on the user."
+    )
+    async def perform_action(self, context: Context, action: str, user: discord.Member = None) -> None:
+        """
+        Perform a variety of actions on a user.
+    
+        :param context: The hybrid command context.
+        :param action: The action to perform on the user.
+        :param user: The user to perform the action on.
+        """
+        action_phrases = {
+            "angry": ["is angry at", "is angry"],
+            "bite": ["bites", "bites"],
+            "blush": ["is blushing at", "is blushing"],
+            "comfy": ["is feeling comfy because of", "is feeling comfy"],
+            "cry": ["is crying because of", "is crying"],
+            "cuddle": ["cuddles with", "cuddles with"],
+            "dance": ["is dancing with", "is dancing"],
+            "fluff": ["fluffs up at", "fluffs up"],
+            "hug": ["hugs", "hugs"],
+            "kiss": ["kisses", "kisses"],
+            "lay": ["lays down with", "is laying down"],
+            "lick": ["licks", "licks themselves"],
+            "pat": ["pats", "pats themselves"],
+            "poke": ["pokes", "pokes themselves"],
+            "pout": ["is pouting at", "is pouting"],
+            "slap": ["slaps", "slaps themselves"],
+            "smile": ["smiles at", "is smiling"],
+            "tail": ["wags tail at", "is wagging their tail"],
+            "tickle": ["tickles", "tickles themselves"],
+            "eevee": ["transforms into Eevee at", "transforms into Eevee"],
+            "neko": ["transforms into Neko at", "transforms into Neko"]
+        }
+    
+        if action not in action_phrases.keys():
+            return await context.send("Invalid action! Please use `listactions` to see all available actions.")
+    
+        if user:
+            dynamic_description = f"{context.author.mention} {action_phrases[action][0]} {user.mention}!"
+        else:
+            dynamic_description = f"{context.author.mention} {action_phrases[action][1]}!"
+    
+        base_url = "https://purrbot.site/api"
+        endpoint = f"/img/sfw/{action}/gif"
+    
+        async with aiohttp.ClientSession() as session:
+            async with session.get(base_url + endpoint) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    embed = discord.Embed(
+                        title="",
+                        description=dynamic_description,
+                        color=0xD75BF4
+                    )
+                    embed.set_image(url=data["link"])
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="listactions",
+        description="List all the available actions that can be performed.",
+        aliases=["actions", "actionlist"],
+        usage="listactions"
+    )
+    @app_commands.describe(
+
+    )
+    async def list_actions(self, context: Context) -> None:
+        """
+        List all the available actions that can be performed.
+
+        :param context: The hybrid command context.
+        """
+        actions = [
+            "angry", "bite", "blush", "comfy", "cry", "cuddle", "dance", "fluff", "hug", "kiss", "lay", "lick", "pat", "poke", "pout", "slap", "smile", "tail", "tickle", "eevee", "neko"
+        ]
+        embed = discord.Embed(
+            title="Available Actions",
+            description=", ".join(actions),
+            color=0xD75BF4
+        )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Fun(bot))

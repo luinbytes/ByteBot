@@ -1,10 +1,15 @@
 import platform
-
+import sqlite3
 import discord
+import os
+
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
+DATABASE_DIR = "database"
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 class General(commands.Cog, name="general"):
     def __init__(self, bot) -> None:
@@ -17,6 +22,20 @@ class General(commands.Cog, name="general"):
             name="Remove spoilers", callback=self.remove_spoilers
         )
         self.bot.tree.add_command(self.context_menu_message)
+
+    def guild_prefix(self, db, guild_id, prefix=None):
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        if prefix is not None:
+            # Write to the table
+            db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+            db_conn.commit()
+        else:
+            # Read from the table
+            cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+        db.close()
 
     # Message context menu command
     async def remove_spoilers(
@@ -63,7 +82,9 @@ class General(commands.Cog, name="general"):
         description="List all commands the bot has loaded or show commands in a specific category.",
     )
     async def help(self, context: Context, category: str = None) -> None:
-        prefix = self.bot.config["prefix"]
+        db_conn = sqlite3.connect(DB_PATH)
+        db = db_conn.cursor()
+        prefix = self.guild_prefix(db, context.guild.id)
         embed = discord.Embed(
             title="Help", description="List of available categories:", color=0xBEBEFE
         )
