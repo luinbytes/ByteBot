@@ -143,7 +143,7 @@ class General(commands.Cog, name="general"):
         )
         embed.add_field(
             name="Prefix:",
-            value=f"/ (Slash Commands) or {self.bot.config['prefix']} for normal commands",
+            value=f"/ (Slash Commands) or {self.guild_prefix(self, context.guild.id)} for normal commands",
             inline=False,
         )
         embed.add_field(
