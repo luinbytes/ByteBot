@@ -71,9 +71,9 @@ class SteamTools(commands.Cog, name="steamtools"):
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
-        cursor.execute('SELECT 1 FROM GuildBanChannels WHERE guild_id = ?', (guild_id,))
+        cursor.execute('SELECT 1 FROM GuildSteamBans WHERE guild_id = ?', (guild_id,))
         if cursor.fetchone():
-            cursor.execute('SELECT channel_id FROM GuildBanChannels WHERE guild_id = ?', (guild_id,))
+            cursor.execute('SELECT channel_id FROM GuildSteamBans WHERE guild_id = ?', (guild_id,))
             existing_channel_id = cursor.fetchone()
             if existing_channel_id and existing_channel_id[0] == channel_id:
                 embed = discord.Embed(
@@ -84,9 +84,9 @@ class SteamTools(commands.Cog, name="steamtools"):
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 await context.send(embed=embed)
                 return
-            cursor.execute('UPDATE GuildBanChannels SET channel_id = ? WHERE guild_id = ?', (channel_id, guild_id))
+            cursor.execute('UPDATE GuildSteamBans SET channel_id = ? WHERE guild_id = ?', (channel_id, guild_id))
         else:
-            cursor.execute('INSERT INTO GuildBanChannels (guild_id, channel_id) VALUES (?, ?)', (guild_id, channel_id))
+            cursor.execute('INSERT INTO GuildSteamBans (guild_id, channel_id) VALUES (?, ?)', (guild_id, channel_id))
 
         conn.commit()
         conn.close()
@@ -116,7 +116,7 @@ class SteamTools(commands.Cog, name="steamtools"):
         c = conn.cursor()
 
         # Check if a logging channel has been set for this guild
-        c.execute("SELECT channel_id FROM GuildBanChannels WHERE guild_id=?", (guild_id,))
+        c.execute("SELECT channel_id FROM GuildSteamBans WHERE guild_id=?", (guild_id,))
         row = c.fetchone()
         if row is None:
             embed = discord.Embed(
@@ -338,7 +338,7 @@ class SteamTools(commands.Cog, name="steamtools"):
                             changes.append((field, f"{field}: {cached_value} -> {current_value}"))
         
                     if changes:
-                        c.execute("SELECT 1 FROM GuildBanChannels WHERE guild_id=? AND channel_id=?", (guild_id, channel_id))
+                        c.execute("SELECT 1 FROM GuildSteamBans WHERE guild_id=? AND channel_id=?", (guild_id, channel_id))
                         row = c.fetchone()
                         if row is not None:
                             guild = self.bot.get_guild(guild_id)
