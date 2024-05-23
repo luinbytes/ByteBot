@@ -57,3 +57,48 @@ CREATE TABLE IF NOT EXISTS UserEconomy (
             balance INTEGER NOT NULL,
             last_roll INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS GuildBanChannels (
+    guild_id INTEGER PRIMARY KEY,
+    channel_id INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS GuildSteamBans (
+    guild_id INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
+    tracked_by INTEGER NOT NULL,
+    steamid_64 TEXT NOT NULL,
+    username TEXT NOT NULL,
+    community_ban BOOLEAN,
+    game_ban TEXT,
+    trade_ban BOOLEAN,
+    vac_ban TEXT,
+    days_since_last_ban INTEGER,
+    account_created INTEGER,
+    custom_url TEXT,
+    level INTEGER,
+    private BOOLEAN,
+    real_name TEXT,
+    status TEXT,
+    PRIMARY KEY (guild_id, channel_id, steamid_64)
+);
+
+CREATE TABLE IF NOT EXISTS CachedSteamBans (
+    guild_id INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
+    steamid_64 TEXT NOT NULL,
+    username TEXT NOT NULL,
+    community_ban BOOLEAN,
+    game_ban TEXT,
+    trade_ban BOOLEAN,
+    vac_ban TEXT,
+    days_since_last_ban INTEGER,
+    account_created INTEGER,
+    custom_url TEXT,
+    level INTEGER,
+    private BOOLEAN,
+    real_name TEXT,
+    status TEXT,
+    last_checked INTEGER,
+    PRIMARY KEY (guild_id, channel_id, steamid_64)
+);
