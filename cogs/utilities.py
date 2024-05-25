@@ -245,5 +245,122 @@ class Utilities(commands.Cog, name="utilities"):
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="setwelcomechannel",
+        description="Set the welcome channel for the server.",
+        usage="setwelcomechannel <#channel>",
+        aliases=["swc"]
+    )
+    @app_commands.describe(
+        channel="The channel to set as the welcome channel."
+    )
+    async def set_welcome_channel(self, context: Context, channel: discord.TextChannel = None) -> None:
+        """
+        Set the welcome channel for the server.
+
+        :param context: The hybrid command context.
+        :param channel: The channel to set as the welcome channel.
+        """
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        if channel is None:
+            # Lookup the welcome channel from the GuildWelcomeChannels table
+            cursor = c.execute("SELECT channel_id FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
+            row = cursor.fetchone()
+            if row:
+                channel = context.guild.get_channel(row[0])
+                embed = discord.Embed(
+                    title="Welcome Channel",
+                    description=f"The current welcome channel is {channel.mention}",
+                    color=0xBEBEFE,
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="Error!",
+                    description="No welcome channel has been set for this server.",
+                    color=0xE02B2B,
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+        else:
+            # Write to the table
+            try:
+                c.execute("INSERT INTO GuildWelcomeChannels (guild_id, channel_id) VALUES (?, ?)", (context.guild.id, channel.id))
+            except sqlite3.IntegrityError:
+                c.execute("UPDATE GuildWelcomeChannels SET channel_id = ? WHERE guild_id = ?", (channel.id, context.guild.id))
+            conn.commit()
+            embed = discord.Embed(
+                title="Welcome Channel",
+                description=f"Welcome channel set to {channel.mention}",
+                color=0xBEBEFE,
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+        conn.close()
+    
+    @commands.hybrid_command(
+        name="removewelcomechannel",
+        description="Remove the welcome channel for the server.",
+        aliases=["rwc", "rmwelcomechannel"],
+        usage="removewelcomechannel"
+    )
+    async def remove_welcome_channel(self, context: Context) -> None:
+        """
+        Remove the welcome channel for the server.
+
+        :param context: The hybrid command context.
+        """
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        # Check if welcome channel is even set
+        cursor = c.execute("SELECT channel_id FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
+        row = cursor.fetchone()
+        if row:
+            c.execute("DELETE FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
+            conn.commit()
+            embed = discord.Embed(
+                title="Welcome Channel",
+                description=f"Welcome channel removed",
+                color=0xBEBEFE,
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                title="Error!",
+                description="No welcome channel has been set for this server.",
+                color=0xE02B2B,
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        cursor = c.execute("SELECT channel_id FROM GuildWelcomeChannels WHERE guild_id = ?", (member.guild.id,))
+        row = cursor.fetchone()
+        if row:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://purrbot.site/api/img/sfw/dance/gif") as request:
+                    if request.status == 200:
+                        data = await request.json()
+                        gif = data["link"]
+                    else:
+                        gif = None
+            channel = member.guild.get_channel(row[0])
+            embed = discord.Embed(
+                title=f"{member.guild.name}",
+                description=f"Welcome to {member.guild.name}, {member.mention}!",
+                color=0xBEBEFE,
+            )
+            embed.set_image(url=gif)
+            embed.set_footer(text="ByteBot - THE Mediocre Discord Bot", icon_url=self.bot.user.avatar.url)
+            await channel.send(f"{member.mention} has joined!", embed=embed)
+            
+        conn.close()
+
 async def setup(bot) -> None:
     await bot.add_cog(Utilities(bot))

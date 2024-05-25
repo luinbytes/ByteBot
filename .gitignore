@@ -161,3 +161,4 @@ cython_debug/
 Lavalink.jar
 application.yml
 plugins/youtube-plugin-1.3.0.jar
+/.vscode

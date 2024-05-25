@@ -493,6 +493,39 @@ class Fun(commands.Cog, name="fun"):
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="insult",
+        description="Generate a random insult.",
+        usage="insult <@user>"
+    )
+    @app_commands.describe(
+        user="The user to insult."
+    )
+    async def insult(self, context: Context, user: discord.Member = None) -> None:
+        """
+        Generate a random insult.
+
+        :param context: The hybrid command context.
+        :param user: The user to insult.
+        """
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://evilinsult.com/generate_insult.php?lang=en&type=json"
+            ) as request:
+                if request.status == 200:
+                    data = await request.json()
+                    insult = data.get("insult", "No insult available")
+                    if user is None:
+                        await context.send(insult)
+                    else:
+                        await context.send(f"{user.mention}, {insult}")
+                else:
+                    embed = discord.Embed(
+                        title="Error!",
+                        description="There is something wrong with the API, please try again later",
+                        color=0xE02B2B,
+                    )
+                    await context.send(embed=embed)
 
 async def setup(bot) -> None:
     await bot.add_cog(Fun(bot))
