@@ -29,10 +29,10 @@ class SteamTools(commands.Cog, name="steamtools"):
         self.bot = bot
 
     @commands.hybrid_command(
-        name="steamid",
+        name="steaminfo",
         description="Scrape info from a users steam account via their steamID.",
-        usage="steamid <steamID>",
-        aliases=["sid"]
+        usage="steaminfo <steamID>",
+        aliases=["steam", "steamprofile", "steamuser"]
     )
     @app_commands.describe(
         steamuserid="The steamID of the user to scrape info from."
