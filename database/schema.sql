@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS GuildBanChannels (
 CREATE TABLE IF NOT EXISTS GuildSteamBans (
     guild_id INTEGER NOT NULL,
     channel_id INTEGER NOT NULL,
-    tracked_by INTEGER NOT NULL,
+    tracked_by TEXT NOT NULL,
     steamid_64 TEXT NOT NULL,
     CommunityBanned BOOLEAN,
     VACBanned BOOLEAN,
