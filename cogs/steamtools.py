@@ -415,32 +415,43 @@ class SteamTools(commands.Cog, name="steamtools"):
                         tracked_by_users.append(user.name)
                     description = f"`{steamid64}`'s ban status has changed."
 
-                    # Check if there are errors in the data
+                    # Initialize the embed
                     embed = discord.Embed(
                         title="Ban Status Changed",
                         description=description,
                         color=discord.Color.red()
                     )
+                    
+                    # Check if 'errors' in data
                     if 'errors' in data:
                         embed.add_field(name="❌ FACEIT:", value="No FACEIT information available.", inline=False)
                     else:
-                        nickname = data['nickname']
+                        # Extract nickname
+                        nickname = data.get('nickname', 'Unknown')
+                    
+                        # Update description
                         description = f"`{nickname}`'s ban status has changed."
+                    
                         # Fetch the names and URLs of the first 5 friends
                         friend_links = []
-                        for friend_id in data['friends_ids'][:5]:
+                        for friend_id in data.get('friends_ids', [])[:5]:
                             async with session.get(f"{player_search_url}/{friend_id}", headers=headers) as friend_response:
                                 friend_data = await friend_response.json()
-                                friend_links.append(f"[{friend_data['nickname']}](https://www.faceit.com/{friend_data['settings']['language']}/players/{friend_data['nickname']})")
+                                friend_links.append(f"[{friend_data.get('nickname', 'Unknown')}](https://www.faceit.com/{friend_data.get('settings', {}).get('language', '')}/players/{friend_data.get('nickname', 'Unknown')})")
+                    
+                        # Add fields to the embed
                         embed.add_field(name="Changes:", value="\n".join(changes), inline=False)
                         embed.add_field(name="\u200b", value="\u200b", inline=False)
                         embed.add_field(name="✔️ FACEIT:", value="", inline=True)
-                        embed.add_field(name="🔗 Steam Info", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})\nSteam ID: `{data['platforms']['steam']}`\nNew Steam ID: `{data['new_steam_id']}`\nSteam ID 64: `{data['steam_id_64']}`", inline=False)
-                        embed.add_field(name="🔫 CSGO Info", value=f"Region: `{data['games']['csgo']['region']}`\nSkill Level: `{data['games']['csgo']['skill_level']}`\nFaceit ELO: `{data['games']['csgo']['faceit_elo']}`", inline=False)
-                        embed.add_field(name="🎮 CS2 Info", value=f"Region: `{data['games']['cs2']['region']}`\nSkill Level: `{data['games']['cs2']['skill_level']}`\nFaceit ELO: `{data['games']['cs2']['faceit_elo']}`", inline=False)
+                        embed.add_field(name="🔗 Steam Info", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})\nSteam ID: `{data.get('platforms', {}).get('steam', '')}`\nNew Steam ID: `{data.get('new_steam_id', '')}`\nSteam ID 64: `{data.get('steam_id_64', '')}`", inline=False)
+                        embed.add_field(name="🔫 CSGO Info", value=f"Region: `{data.get('games', {}).get('csgo', {}).get('region', '')}`\nSkill Level: `{data.get('games', {}).get('csgo', {}).get('skill_level', '')}`\nFaceit ELO: `{data.get('games', {}).get('csgo', {}).get('faceit_elo', '')}`", inline=False)
+                        embed.add_field(name="🎮 CS2 Info", value=f"Region: `{data.get('games', {}).get('cs2', {}).get('region', '')}`\nSkill Level: `{data.get('games', {}).get('cs2', {}).get('skill_level', '')}`\nFaceit ELO: `{data.get('games', {}).get('cs2', {}).get('faceit_elo', '')}`", inline=False)
                         embed.add_field(name="👥 Friends", value=", ".join(friend_links) + " and more...", inline=False)  # Display only first 5 friends
-
-                    embed.add_field(name="", value=f"[FACEIT Profile](https://www.faceit.com/en/players/{data['nickname']})", inline=False)
+                    
+                    # Add FACEIT profile link
+                    embed.add_field(name="", value=f"[FACEIT Profile](https://www.faceit.com/en/players/{nickname})", inline=False)
+                    
+                    # Set footer
                     embed.set_footer(text=f"Tracked by {' '.join(tracked_by_users)}")
                     tracked_by_mentions = []
                     for tracked_by_id in tracked_by_ids:

@@ -258,7 +258,7 @@ class DiscordBot(commands.Bot):
             description="Bot is now online and ready to use!",
             color=0x00FF00
         )
-        embed.add_field(name="Environment", value="Development" if os.getenv("IS_DEV_CONTAINER") == "True" else "Production", inline=False)
+        embed.add_field(name="Environment:", value="🔨 Development" if os.getenv("IS_DEV_CONTAINER") == "True" else "🫡 Production", inline=True)
         embed.set_footer(text="ByteBot by @0x6c75", icon_url=self.user.avatar.url)
         await self.get_channel(STATUS_CHANNEL).send(embed=embed)
             
