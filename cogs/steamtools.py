@@ -416,6 +416,11 @@ class SteamTools(commands.Cog, name="steamtools"):
                     description = f"`{steamid64}`'s ban status has changed."
 
                     # Check if there are errors in the data
+                    embed = discord.Embed(
+                        title="Ban Status Changed",
+                        description=description,
+                        color=discord.Color.red()
+                    )
                     if 'errors' in data:
                         embed.add_field(name="❌ FACEIT:", value="No FACEIT information available.", inline=False)
                     else:
@@ -427,11 +432,6 @@ class SteamTools(commands.Cog, name="steamtools"):
                             async with session.get(f"{player_search_url}/{friend_id}", headers=headers) as friend_response:
                                 friend_data = await friend_response.json()
                                 friend_links.append(f"[{friend_data['nickname']}](https://www.faceit.com/{friend_data['settings']['language']}/players/{friend_data['nickname']})")
-                        embed = discord.Embed(
-                            title="Ban Status Changed",
-                            description=description,
-                            color=discord.Color.red()
-                        )
                         embed.add_field(name="Changes:", value="\n".join(changes), inline=False)
                         embed.add_field(name="\u200b", value="\u200b", inline=False)
                         embed.add_field(name="✔️ FACEIT:", value="", inline=True)
