@@ -8,6 +8,7 @@ import os
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord import app_commands
+from steam.steamid import SteamID
 
 DATABASE_DIR = "database"
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -32,6 +33,13 @@ headers = {
     'Authorization': 'Bearer 65deedc2-1914-4efc-9308-a68cbe27db05'
 }
 
+async def get_steam_profile_name(steamid64):
+    url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_api_key}&steamids={steamid64}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            data = await response.json()
+            return data['response']['players'][0]['personaname']
+
 class SteamTools(commands.Cog, name="steamtools"):
     def __init__(self, bot):
         self.bot = bot
@@ -43,11 +51,22 @@ class SteamTools(commands.Cog, name="steamtools"):
         aliases=["steam", "steamprofile", "steamuser"]
     )
     @app_commands.describe(
-        steamuserid="The steamID of the user to scrape info from."
+        steamid="The steamID of the user to scrape info from."
     )
-    async def steamid(self, context: Context, steamuserid: str) -> None:
+    async def steamid(self, context: Context, steamid: str) -> None:
+        try:
+            steamid64 = SteamID.from_url(steamid).as_64
+        except ValueError:
+            embed = discord.Embed(
+                title="Invalid Steam ID",
+                description="Please enter a valid Steam ID, Steam ID3, Steam ID32, Steam ID64, or Steam profile URL.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
         async with aiohttp.ClientSession() as session:
-            async with session.get(f'https://api.snaz.in/v2/steam/user-profile/{steamuserid}') as r:
+            async with session.get(f'https://api.snaz.in/v2/steam/user-profile/{steamid64}') as r:
                 if r.status == 200:
                     data = await r.json()
                     embed = discord.Embed(
@@ -67,12 +86,22 @@ class SteamTools(commands.Cog, name="steamtools"):
                     embed.add_field(name="Badges", value=data['counts']['badges']['formatted'], inline=True)
                     embed.add_field(name="Artwork", value=data['counts']['artwork']['formatted'], inline=True)
                     embed.add_field(name="Screenshots", value=data['counts']['screenshots']['formatted'], inline=True)
-                    embed.add_field(name="Workshop Files", value=data['counts']['workshop_files']['formatted'], inline=True)
+                    workshop_files = data['counts']['workshop_files']['formatted'] if data['counts']['workshop_files'] else 'None/Private'
+                    embed.add_field(name="Workshop Files", value=workshop_files, inline=True)
                     embed.add_field(name="Primary Group", value=data['primary_group']['name'], inline=True)
-                    embed.set_footer(text="Data provided by Snaz API")
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await context.send(embed=embed)
                 else:
-                    await context.send('Could not fetch data from Steam API.')
+                    embed = discord.embed(
+                        title="Error",
+                        description="An error occurred while fetching the data.",
+                        color=discord.Color.red()
+                    )
+                    embed.add_field(name="Status Code", value=r.status, inline=False)
+                    embed.add_field(name="Response", value=await r.text(), inline=False)
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+
 
     @commands.hybrid_command(
         name="steamid64",
@@ -151,15 +180,28 @@ class SteamTools(commands.Cog, name="steamtools"):
     @commands.hybrid_command(
             name="tracksteam",
             description="Track a steam user for bans.",
-            usage="tracksteam <steamID64>",
-            aliases=["ts"]
+            usage="tracksteam <steamID>",
+            aliases=["track"]
     )
     @app_commands.describe(
-        steamid64="The steamID of the user to track."
+        steamid="The steamID of the user to track."
     )
-    async def track_steamid(self, context: Context, steamid64: str) -> None:
+    async def track_steamid(self, context: Context, steamid: str) -> None:
+        try:
+            steamid64 = SteamID.from_url(steamid).as_64
+        except ValueError:
+            embed = discord.Embed(
+                title="Invalid Steam ID",
+                description="Please enter a valid Steam ID, Steam ID3, Steam ID32, Steam ID64, or Steam profile URL.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+        
         guild_id = context.guild.id
         tracked_by = context.author.id
+        profile_name = await get_steam_profile_name(steamid64)
 
         # check steamid against steam api
         async with aiohttp.ClientSession() as session:
@@ -218,7 +260,7 @@ class SteamTools(commands.Cog, name="steamtools"):
                     # Rest of your code...
                     embed = discord.Embed(
                         title="Steam ID Already Tracked",
-                        description=f"`{steamid64}` is already being tracked for bans. Your Discord ID has been added to the tracking list.",
+                        description=f"`{profile_name}` is already being tracked for bans. Your Discord ID has been added to the tracking list.",
                         color=discord.Color.red()
                     )
                     embed.add_field(name="Steam Profile", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})", inline=False)
@@ -228,7 +270,7 @@ class SteamTools(commands.Cog, name="steamtools"):
                 else:
                     embed = discord.Embed(
                         title="Already Tracking Steam ID",
-                        description=f"You are already tracking {steamid64}.",
+                        description=f"You are already tracking {profile_name}.",
                         color=discord.Color.red()
                     )
                     embed.add_field(name="Steam Profile", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})", inline=False)
@@ -248,25 +290,40 @@ class SteamTools(commands.Cog, name="steamtools"):
         conn.close()
 
         embed = discord.Embed(
-            title="Steam ID Tracked",
-            description=f"`{steamid64}` is now being tracked for bans.",
+            title="Tracking Steam ID",
+            description=f"{profile_name} is now being tracked for bans.",
             color=discord.Color.green()
         )
-        embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})", inline=False)
+        embed.add_field(name="Steam ID", value=f"`{steamid64}`", inline=False)
+        embed.add_field(name="Steam Profile", value=f"[View Profile](https://steamcommunity.com/profiles/{steamid64})", inline=False)
         embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="untracksteam",
         description="Untrack a steam user for bans.",
-        usage="untracksteam <steamID64>"
+        usage="untracksteam <steamID>",
+        aliases=["untrack"]
     )
     @app_commands.describe(
-        steamid64="The steamID of the user to untrack."
+        steamid="The steamID of the user to untrack."
     )
-    async def untrack_steamid(self, context: Context, steamid64: str) -> None:
+    async def untrack_steamid(self, context: Context, steamid: str) -> None:
+        try:
+            steamid64 = SteamID.from_url(steamid).as_64
+        except ValueError:
+            embed = discord.Embed(
+                title="Invalid Steam ID",
+                description="Please enter a valid Steam ID, Steam ID3, Steam ID32, Steam ID64, or Steam profile URL.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
         guild_id = context.guild.id
         requested_by = context.author.id
+        profile_name = await get_steam_profile_name(steamid64)
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -276,16 +333,16 @@ class SteamTools(commands.Cog, name="steamtools"):
         if row is None:
             embed = discord.Embed(
                 title="Steam ID Not Tracked",
-                description=f"`{steamid64}` is not being tracked for bans.",
+                description=f"`{profile_name}` is not being tracked for bans.",
                 color=discord.Color.red()
             )
             embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})", inline=False)
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
-        elif row[0] != requested_by:
+        elif int(row[0]) != requested_by:
             embed = discord.Embed(
                 title="Untrack Not Allowed",
-                description=f"You are not allowed to untrack `{steamid64}` because you did not track them.",
+                description=f"You are not allowed to untrack `{profile_name}` because you did not track them.",
                 color=discord.Color.red()
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
@@ -297,7 +354,7 @@ class SteamTools(commands.Cog, name="steamtools"):
             conn.close()
             embed = discord.Embed(
                 title="Steam ID Untracked",
-                description=f"`{steamid64}` is no longer being tracked for bans.",
+                description=f"`{profile_name}` is no longer being tracked for bans.",
                 color=discord.Color.green()
             )
             embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})", inline=False)
@@ -312,10 +369,10 @@ class SteamTools(commands.Cog, name="steamtools"):
     )
     async def list_tracked(self, context: Context) -> None:
         guild_id = context.guild.id
-
+    
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-
+    
         cursor.execute('SELECT steamid_64, tracked_by FROM GuildSteamBans WHERE guild_id = ?', (guild_id,))
         rows = cursor.fetchall()
         if not rows:
@@ -340,7 +397,8 @@ class SteamTools(commands.Cog, name="steamtools"):
             
             tracked_ids = []
             for steam_id, mentions in tracked_ids_dict.items():
-                tracked_ids.append(f"[{steam_id}](https://steamcommunity.com/profiles/{steam_id}) tracked by {' '.join(mentions)}")
+                profile_name = await get_steam_profile_name(steam_id)
+                tracked_ids.append(f"[{profile_name}](https://steamcommunity.com/profiles/{steam_id}) tracked by {' '.join(mentions)}")
             
             embed = discord.Embed(
                 title="Tracked Steam IDs",
