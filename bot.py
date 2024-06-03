@@ -71,6 +71,9 @@ DATABASE_DIR = "database"
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
+# Status Channel (HARD CODED LOLOLOLOL)
+STATUS_CHANNEL = 1247174196069531679
+
 # Setup both of the loggers
 class LoggingFormatter(logging.Formatter):
     # Colors
@@ -196,12 +199,15 @@ class DiscordBot(commands.Bot):
                         f"Failed to load extension {extension}\n{exception}"
                     )
 
-    @tasks.loop(minutes=1.0)
+    @tasks.loop(minutes=5.0)
     async def status_task(self) -> None:
         """
         Setup the game status task of the bot.
         """
-        statuses = ["Reading discord.py docs...", "VSCode!", "with firearms.", "Vote for me on top.gg!", "You should gamble...", "Crying right now :)"]
+        if os.getenv("IS_DEV_CONTAINER") == "True":
+            statuses = ["Reading discord.py docs...", "VSCode! (not good help me)", "Coding and Crying :)", "DEV MODE = [ON] >B)", "Something is probably broken rn", "Don't expect me to work rn! :D", "Thanks GitHub Copilot <3", "LLM's took my job."]
+        else:
+            statuses = ["with knives rn", "Counter-Strike 2", "with firearms.", "Vote for me on top.gg!", "You should gamble...", "Lunar Client (ew)", "He actually remembered...", "League of Leg... Nope nvm.", "Minecraft 2", "Grand Theft Auto 7", "Half-Life 2.9 D:", "That fucking dota card game lmao", "Overwatch 1 season 3 (good times)"]
         await self.change_presence(activity=discord.Game(random.choice(statuses)))
         # channel = self.get_channel(1240624554544726037)
         # random_message = random.choice(
@@ -246,6 +252,15 @@ class DiscordBot(commands.Bot):
                 self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
                 # self.logger.info(f"Prefix for guild {guild.id} is {prefix}")
         db_conn.close()
+
+        embed = discord.Embed(
+            title = "🟢 Online",
+            description="Bot is now online and ready to use!",
+            color=0x00FF00
+        )
+        embed.add_field(name="Environment", value="Development" if os.getenv("IS_DEV_CONTAINER") == "True" else "Production", inline=False)
+        embed.set_footer(text="ByteBot by @0x6c75", icon_url=self.user.avatar.url)
+        await self.get_channel(STATUS_CHANNEL).send(embed=embed)
             
 
         await self.connect_nodes()

@@ -7,13 +7,17 @@ CREATE TABLE IF NOT EXISTS `warns` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS LastOnline (
+            last_online_timestamp INTEGER PRIMARY KEY
+);
+
 CREATE TABLE IF NOT EXISTS GuildStarboardChannels (
             guild_id INTEGER PRIMARY KEY,
             channel_id INTEGER NOT NULL,
             starboard_min_reactions INTEGER NOT NULL DEFAULT 3
 );
 
-        CREATE TABLE IF NOT EXISTS GuildAutoroles (
+CREATE TABLE IF NOT EXISTS GuildAutoroles (
             guild_id INTEGER PRIMARY KEY,
             role_id INTEGER NOT NULL
 );
@@ -33,6 +37,13 @@ CREATE TABLE IF NOT EXISTS GuildMuteRole (
             role_id INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS GuildMutedUsers (
+            guild_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            end_time INTEGER NOT NULL,
+            PRIMARY KEY (guild_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS GuildWelcomeChannels (
             guild_id INTEGER PRIMARY KEY,
             channel_id INTEGER NOT NULL
@@ -44,11 +55,11 @@ CREATE TABLE IF NOT EXISTS GuildLeaveChannels (
 );
 
 CREATE TABLE IF NOT EXISTS ChatSync (
-  channel_id_1 INTEGER NOT NULL,
-  guild_id_1 INTEGER NOT NULL,
-  channel_id_2 INTEGER NOT NULL,
-  guild_id_2 INTEGER NOT NULL,
-  PRIMARY KEY (channel_id_1, guild_id_1, channel_id_2, guild_id_2)
+            channel_id_1 INTEGER NOT NULL,
+            guild_id_1 INTEGER NOT NULL,
+            channel_id_2 INTEGER NOT NULL,
+            guild_id_2 INTEGER NOT NULL,
+            PRIMARY KEY (channel_id_1, guild_id_1, channel_id_2, guild_id_2)
 );
 
 CREATE TABLE IF NOT EXISTS UserEconomy (
@@ -59,20 +70,20 @@ CREATE TABLE IF NOT EXISTS UserEconomy (
 );
 
 CREATE TABLE IF NOT EXISTS GuildBanChannels (
-    guild_id INTEGER PRIMARY KEY,
-    channel_id INTEGER NOT NULL
+              guild_id INTEGER PRIMARY KEY,
+              channel_id INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS GuildSteamBans (
-    guild_id INTEGER NOT NULL,
-    channel_id INTEGER NOT NULL,
-    tracked_by TEXT NOT NULL,
-    steamid_64 TEXT NOT NULL,
-    CommunityBanned BOOLEAN,
-    VACBanned BOOLEAN,
-    NumberOfVACBans INTEGER,
-    DaysSinceLastBan INTEGER,
-    NumberOfGameBans INTEGER,
-    EconomyBan TEXT,
-    PRIMARY KEY (guild_id, channel_id, steamid_64)
+              guild_id INTEGER NOT NULL,
+              channel_id INTEGER NOT NULL,
+              tracked_by TEXT NOT NULL,
+              steamid_64 TEXT NOT NULL,
+              CommunityBanned BOOLEAN,
+              VACBanned BOOLEAN,
+              NumberOfVACBans INTEGER,
+              DaysSinceLastBan INTEGER,
+              NumberOfGameBans INTEGER,
+              EconomyBan TEXT,
+              PRIMARY KEY (guild_id, channel_id, steamid_64)
 );
