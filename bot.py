@@ -263,7 +263,7 @@ class DiscordBot(commands.Bot):
         await self.get_channel(STATUS_CHANNEL).send(embed=embed)
             
 
-        # await self.connect_nodes()
+        await self.connect_nodes()
 
     async def on_message(self, message: discord.Message) -> None:
         """
