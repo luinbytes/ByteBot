@@ -363,8 +363,9 @@ class SteamTools(commands.Cog, name="steamtools"):
     
             # Fetch the player_info from the Steam API
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{get_player_bans}key={steam_api_key}&access_token={access_token}&steamids={steam_id_test}") as resp:
+                async with session.get(f"{get_player_bans}key={steam_api_key}&access_token={access_token}&steamids={steamid64}") as resp:
                     data = await resp.text()
+                    print(data)
                     user_info = json.loads(data)
                     player_info = user_info['players'][0]
     
@@ -390,15 +391,15 @@ class SteamTools(commands.Cog, name="steamtools"):
     
             changes = []
             if old_community_banned != new_community_banned:
-                changes.append(f"Community Banned: {old_community_banned} -> {new_community_banned}")
+                changes.append(f"Community Banned: {'No' if old_community_banned == 0 else 'Yes'} ➡️ {'No' if new_community_banned == 0 else 'Yes'}")
             if old_vac_banned != new_vac_banned:
-                changes.append(f"VAC Banned: {old_vac_banned} -> {new_vac_banned}")
+                changes.append(f"VAC Banned: {'No' if old_vac_banned == 0 else 'Yes'} ➡️ {'No' if new_vac_banned == 0 else 'Yes'}")
             if old_number_of_vac_bans != new_number_of_vac_bans:
-                changes.append(f"Number of VAC Bans: {old_number_of_vac_bans} -> {new_number_of_vac_bans}")
+                changes.append(f"Number of VAC Bans: {old_number_of_vac_bans} ➡️ {new_number_of_vac_bans}")
             if old_number_of_game_bans != new_number_of_game_bans:
-                changes.append(f"Number of Game Bans: {old_number_of_game_bans} -> {new_number_of_game_bans}")
+                changes.append(f"Number of Game Bans: {old_number_of_game_bans} ➡️ {new_number_of_game_bans}")
             if old_economy_ban != new_economy_ban:
-                changes.append(f"Economy Ban: {old_economy_ban} -> {new_economy_ban}")
+                changes.append(f"Economy Ban: {'No' if old_economy_ban == 'none' else 'Yes'} ➡️ {'No' if new_economy_ban == 'none' else 'Yes'}")
 
             if changes:
                 async with aiohttp.ClientSession() as session:
@@ -413,32 +414,33 @@ class SteamTools(commands.Cog, name="steamtools"):
                     for tracked_by_id in tracked_by_ids:
                         user = await self.bot.fetch_user(int(tracked_by_id.strip()))
                         tracked_by_users.append(user.name)
-                    description = f"`{steamid64}`'s ban status has changed."
+                    description = f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status has changed.\n\n" + "\n".join(changes)
 
                     # Extract nickname
                     nickname = data.get('nickname', 'Unknown')
 
                     # Initialize the embed
                     embed = discord.Embed(
-                        title="Ban Status Changed",
+                        title="Ban Update [VACLink]",
                         description=description,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
+                        url=f"https://vaclist.net/account/{steamid64}"
                     )
-                    
+
                     # Check if 'errors' in data
                     if 'errors' in data:
                         embed.add_field(name="❌ FACEIT:", value="No FACEIT information available.", inline=False)
                     else:
                         # Update description
-                        description = f"`{nickname}`'s ban status has changed."
-                    
+                        description = f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status has changed.\n\n" + "\n".join(changes)
+
                         # Fetch the names and URLs of the first 5 friends
                         friend_links = []
                         for friend_id in data.get('friends_ids', [])[:5]:
                             async with session.get(f"{player_search_url}/{friend_id}", headers=headers) as friend_response:
                                 friend_data = await friend_response.json()
                                 friend_links.append(f"[{friend_data.get('nickname', 'Unknown')}](https://www.faceit.com/{friend_data.get('settings', {}).get('language', '')}/players/{friend_data.get('nickname', 'Unknown')})")
-                    
+
                         # Add fields to the embed
                         embed.add_field(name="Changes:", value="\n".join(changes), inline=False)
                         embed.add_field(name="\u200b", value="\u200b", inline=False)
@@ -447,10 +449,10 @@ class SteamTools(commands.Cog, name="steamtools"):
                         embed.add_field(name="🔫 CSGO Info", value=f"Region: `{data.get('games', {}).get('csgo', {}).get('region', '')}`\nSkill Level: `{data.get('games', {}).get('csgo', {}).get('skill_level', '')}`\nFaceit ELO: `{data.get('games', {}).get('csgo', {}).get('faceit_elo', '')}`", inline=False)
                         embed.add_field(name="🎮 CS2 Info", value=f"Region: `{data.get('games', {}).get('cs2', {}).get('region', '')}`\nSkill Level: `{data.get('games', {}).get('cs2', {}).get('skill_level', '')}`\nFaceit ELO: `{data.get('games', {}).get('cs2', {}).get('faceit_elo', '')}`", inline=False)
                         embed.add_field(name="👥 Friends", value=", ".join(friend_links) + " and more...", inline=False)  # Display only first 5 friends
-                    
-                    # Add FACEIT profile link
-                    embed.add_field(name="", value=f"[FACEIT Profile](https://www.faceit.com/en/players/{nickname})", inline=False)
-                    
+
+                        # Add FACEIT profile link
+                        embed.add_field(name="", value=f"[FACEIT Profile](https://www.faceit.com/en/players/{nickname})", inline=False)
+
                     # Set footer
                     embed.set_footer(text=f"Tracked by {' '.join(tracked_by_users)}")
                     tracked_by_mentions = []
@@ -460,9 +462,7 @@ class SteamTools(commands.Cog, name="steamtools"):
 
                     # Only send the message if there are mentions
                     if tracked_by_mentions:
-                        await channel.send(f"{' '.join(tracked_by_mentions)}")
-
-                    await channel.send(embed=embed)
+                        await channel.send(f"{' '.join(tracked_by_mentions)}", embed=embed)
 
                 # Update the info in the database for the next check
                 cursor.execute('UPDATE GuildSteamBans SET CommunityBanned = ?, VACBanned = ?, NumberOfVACBans = ?, DaysSinceLastBan = ?, NumberOfGameBans = ?, EconomyBan = ? WHERE guild_id = ? AND steamid_64 = ?',
