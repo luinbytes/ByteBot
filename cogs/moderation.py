@@ -1,17 +1,19 @@
-import os
-from datetime import datetime
 import json
+import os
+import re
+import sqlite3
+from datetime import datetime
+from datetime import timedelta
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Context
-import sqlite3
-import re
 
 DATABASE_DIR = "database"
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
+
 
 def guild_prefix(db, guild_id, prefix=None):
     db_conn = sqlite3.connect(DB_PATH)
@@ -30,12 +32,14 @@ def guild_prefix(db, guild_id, prefix=None):
         return row[0] if row else None
     db.close()
 
+
 def update_guild_prefix(db, guild_id, prefix):
     db_conn = sqlite3.connect(DB_PATH)
     db = db_conn.cursor()
     db.execute("INSERT OR REPLACE INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
     db_conn.commit()
     db.close()
+
 
 def guild_autoroles(db, guild_id, role_id=None):
     db_conn = sqlite3.connect(DB_PATH)
@@ -51,6 +55,7 @@ def guild_autoroles(db, guild_id, role_id=None):
         return row[0] if row else None
     db_conn.close()
 
+
 def guild_starboard_channels(self, guild_id, starboard_min_reactions=None, channel_id=None):
     # Connect to the database
     db_conn = sqlite3.connect(DB_PATH)
@@ -64,7 +69,8 @@ def guild_starboard_channels(self, guild_id, starboard_min_reactions=None, chann
 
     # If starboard_min_reactions is not None, update the starboard_min_reactions column
     if starboard_min_reactions is not None:
-        db.execute("UPDATE GuildStarboardChannels SET starboard_min_reactions = ? WHERE guild_id = ?", (starboard_min_reactions, guild_id))
+        db.execute("UPDATE GuildStarboardChannels SET starboard_min_reactions = ? WHERE guild_id = ?",
+                   (starboard_min_reactions, guild_id))
 
     # If channel_id is not None, update the channel_id column
     if channel_id is not None:
@@ -73,6 +79,7 @@ def guild_starboard_channels(self, guild_id, starboard_min_reactions=None, chann
     # Commit the changes and close the connection
     db_conn.commit()
     db_conn.close()
+
 
 class Moderation(commands.Cog, name="moderation"):
     def __init__(self, bot) -> None:
@@ -100,7 +107,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be kicked.",
     )
     async def kick(
-        self, context: Context, user: discord.User, *, reason: str = "Not specified"
+            self, context: Context, user: discord.User, *, reason: str = "Not specified"
     ) -> None:
         """
         Kick a user out of the server.
@@ -151,7 +158,7 @@ class Moderation(commands.Cog, name="moderation"):
         nickname="The new nickname that should be set.",
     )
     async def nick(
-        self, context: Context, user: discord.User, *, nickname: str = None
+            self, context: Context, user: discord.User, *, nickname: str = None
     ) -> None:
         """
         Change the nickname of a user on a server.
@@ -188,7 +195,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be banned.",
     )
     async def ban(
-        self, context: Context, user: discord.User, *, reason: str = "Not specified"
+            self, context: Context, user: discord.User, *, reason: str = "Not specified"
     ) -> None:
         """
         Bans a user from the server.
@@ -257,7 +264,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be warned.",
     )
     async def warning_add(
-        self, context: Context, user: discord.User, *, reason: str = "Not specified"
+            self, context: Context, user: discord.User, *, reason: str = "Not specified"
     ) -> None:
         """
         Warns a user in his private messages.
@@ -298,7 +305,7 @@ class Moderation(commands.Cog, name="moderation"):
         warn_id="The ID of the warning that should be removed.",
     )
     async def warning_remove(
-        self, context: Context, user: discord.User, warn_id: int
+            self, context: Context, user: discord.User, warn_id: int
     ) -> None:
         """
         Warns a user in his private messages.
@@ -355,12 +362,10 @@ class Moderation(commands.Cog, name="moderation"):
         :param context: The hybrid command context.
         :param amount: The number of messages that should be deleted.
         """
-        await context.send(
-            "Deleting messages..."
-        )  # Bit of a hacky way to make sure the bot responds to the interaction and doens't get a "Unknown Interaction" response
+        await context.defer()
         purged_messages = await context.channel.purge(limit=amount + 1)
         embed = discord.Embed(
-            description=f"**{context.author}** cleared **{len(purged_messages)-1}** messages!",
+            description=f"**{context.mention}** cleared **{len(purged_messages) - 1}** messages!",
             color=0xBEBEFE,
         )
         await context.channel.send(embed=embed)
@@ -376,7 +381,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be banned.",
     )
     async def hackban(
-        self, context: Context, user_id: str, *, reason: str = "Not specified"
+            self, context: Context, user_id: str, *, reason: str = "Not specified"
     ) -> None:
         """
         Bans a user without the user having to be in the server.
@@ -423,7 +428,7 @@ class Moderation(commands.Cog, name="moderation"):
                 f'Archived messages from: #{context.channel} ({context.channel.id}) in the guild "{context.guild}" ({context.guild.id}) at {datetime.now().strftime("%d.%m.%Y %H:%M:%S")}\n'
             )
             async for message in context.channel.history(
-                limit=limit, before=context.message
+                    limit=limit, before=context.message
             ):
                 attachments = []
                 for attachment in message.attachments:
@@ -468,7 +473,7 @@ class Moderation(commands.Cog, name="moderation"):
     @commands.has_permissions(administrator=True)
     async def autorole(self, context: Context, role: discord.Role):
         guild_autoroles(self, context.guild.id, role.id)
-        
+
         for member in context.guild.members:
             if not member.bot:
                 await member.add_roles(role)
@@ -512,10 +517,10 @@ class Moderation(commands.Cog, name="moderation"):
             await context.send(embed=embed)
 
     @commands.hybrid_command(
-            name="sbreactionamount",
-            description="Sets the minimum amount of reactions needed to pin a message to the starboard.",
-            usage="sbreactionamount <amount>",
-            aliases=["starboardreactionamount", "sbreaction", "reactionamount", "sbreacts", "sbreact"]
+        name="sbreactionamount",
+        description="Sets the minimum amount of reactions needed to pin a message to the starboard.",
+        usage="sbreactionamount <amount>",
+        aliases=["starboardreactionamount", "sbreaction", "reactionamount", "sbreacts", "sbreact"]
     )
     @commands.has_permissions(administrator=True)
     @app_commands.describe(
@@ -561,7 +566,8 @@ class Moderation(commands.Cog, name="moderation"):
             # User is not registered, register them and award coins
             user = self.bot.get_user(user_id)
             username = user.name if user else "Unknown User"
-            c.execute("INSERT INTO UserEconomy (user_id, user_name, balance) VALUES (?, ?, ?)", (user_id, username, coins))
+            c.execute("INSERT INTO UserEconomy (user_id, user_name, balance) VALUES (?, ?, ?)",
+                      (user_id, username, coins))
             conn.commit()
 
     @commands.Cog.listener()
@@ -570,80 +576,86 @@ class Moderation(commands.Cog, name="moderation"):
 
         # Get starboard channels and minimum reactions from the database
         result = guild_starboard_channels(self, payload.guild_id)
-        # print(result)
-        starboard_guild_id, starboard_channel_id, min_reactions = result[0]
-        # print(f"Starboard channel ID: {starboard_channel_id}, Minimum reactions: {min_reactions}")
-    
-        if payload.emoji.name == "⭐":
-            # print("Star reaction detected")
-    
-            channel = self.bot.get_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
-            reaction = [react for react in message.reactions if str(react.emoji) == "⭐"][0]
-    
-            if reaction and reaction.count >= min_reactions:
-                # print("Reaction count is greater than or equal to minimum reactions")
-    
-                if starboard_channel_id:
-                    # print("Starboard channel ID exists")
-    
-                    starboard_channel = reaction.message.guild.get_channel(int(starboard_channel_id))
-    
-                    if starboard_channel:
-                        # print("Starboard channel exists")
-    
-                        # Check if the message is already in the starboard
-                        starboard_messages = []
-                        async for message in starboard_channel.history():
-                            starboard_messages.append(message)
-    
-                        if any(f"[Click here]({reaction.message.jump_url})" in embed.fields[0].value for message in starboard_messages for embed in message.embeds if embed.fields):
-                            # print("Message is already in the starboard")
-                            return
-    
-                        # print("Creating embed")
-    
-                        embed = discord.Embed(
-                            title="⭐ Pinned!",
-                            description=reaction.message.content,
-                            color=0xFFFF00,
-                        )
-                        embed.set_author(name=reaction.message.author.name, icon_url=reaction.message.author.avatar.url)
-                        embed.set_footer(text=f"Original message in #{reaction.message.channel.name}")
-                        embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})", inline=False)
-                        embed.add_field(name="Award", value="1000 🪙", inline=True)
-    
-                        # Check if the message content is a URL to an image
-                        url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-                        urls = re.findall(url_pattern, reaction.message.content)
-                        if urls:
-                            # print("URLs found in message content")
-    
-                            for url in urls:
-                                if url.endswith(('.png', '.jpg', '.gif')):
-                                    # print("Image URL found")
-                                    embed.set_image(url=url)
-                                    break
-    
-                        if reaction.message.attachments:
-                            # print("Message has attachments")
-                            embed.set_image(url=reaction.message.attachments[0].url)
-    
-                        # print("Sending embed to starboard channel")
-                        await starboard_channel.send(embed=embed)
-    
-                        message_id = payload.message_id
-                        channel_id = payload.channel_id
-                        guild_id = payload.guild_id
-    
-                        # Fetch the message that was reacted to
-                        channel = self.bot.get_channel(channel_id)
-                        message = await channel.fetch_message(message_id)
-    
-                        # Award coins to the user who sent the message
-                        user_id = message.author.id
-                        # print("Awarding coins to user")
-                        await self.award(user_id, coins=1000)
+        if result:
+            # print(result)
+            starboard_guild_id, starboard_channel_id, min_reactions = result[0]
+            # print(f"Starboard channel ID: {starboard_channel_id}, Minimum reactions: {min_reactions}")
+
+            if payload.emoji.name == "⭐":
+                # print("Star reaction detected")
+
+                channel = self.bot.get_channel(payload.channel_id)
+                message = await channel.fetch_message(payload.message_id)
+                reaction = [react for react in message.reactions if str(react.emoji) == "⭐"][0]
+
+                if reaction and reaction.count >= min_reactions:
+                    # print("Reaction count is greater than or equal to minimum reactions")
+
+                    if starboard_channel_id:
+                        # print("Starboard channel ID exists")
+
+                        starboard_channel = reaction.message.guild.get_channel(int(starboard_channel_id))
+
+                        if starboard_channel:
+                            # print("Starboard channel exists")
+
+                            # Check if the message is already in the starboard
+                            starboard_messages = []
+                            async for message in starboard_channel.history():
+                                starboard_messages.append(message)
+
+                            if any(f"[Click here]({reaction.message.jump_url})" in embed.fields[0].value for message in
+                                   starboard_messages for embed in message.embeds if embed.fields):
+                                # print("Message is already in the starboard")
+                                return
+
+                            # print("Creating embed")
+
+                            embed = discord.Embed(
+                                title="⭐ Pinned!",
+                                description=reaction.message.content,
+                                color=0xFFFF00,
+                            )
+                            embed.set_author(name=reaction.message.author.name,
+                                             icon_url=reaction.message.author.avatar.url)
+                            embed.set_footer(text=f"Original message in #{reaction.message.channel.name}")
+                            embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})",
+                                            inline=False)
+                            embed.add_field(name="Award", value="1000 🪙", inline=True)
+
+                            # Check if the message content is a URL to an image
+                            url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+                            urls = re.findall(url_pattern, reaction.message.content)
+                            if urls:
+                                # print("URLs found in message content")
+
+                                for url in urls:
+                                    if url.endswith(('.png', '.jpg', '.gif')):
+                                        # print("Image URL found")
+                                        embed.set_image(url=url)
+                                        break
+
+                            if reaction.message.attachments:
+                                # print("Message has attachments")
+                                embed.set_image(url=reaction.message.attachments[0].url)
+
+                            # print("Sending embed to starboard channel")
+                            await starboard_channel.send(embed=embed)
+
+                            message_id = payload.message_id
+                            channel_id = payload.channel_id
+                            guild_id = payload.guild_id
+
+                            # Fetch the message that was reacted to
+                            channel = self.bot.get_channel(channel_id)
+                            message = await channel.fetch_message(message_id)
+
+                            # Award coins to the user who sent the message
+                            user_id = message.author.id
+                            # print("Awarding coins to user")
+                            await self.award(user_id, coins=1000)
+        else:
+            return
 
     @commands.hybrid_command(
         name="verifystarboard",
@@ -699,6 +711,158 @@ class Moderation(commands.Cog, name="moderation"):
             color=0xBEBEFE
         )
         await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="createmuterole",
+        description="Creates a mute role for the server.",
+        usage="createmuterole <custom_name(optional)>",
+        aliases=["addmuterole", "makemuterole"]
+    )
+    @app_commands.describe(
+        custom_name="The custom name for the mute role. Default is 'Muted'."
+    )
+    @commands.has_permissions(administrator=True)
+    async def createmuterole(self, context: Context, custom_name: str = None) -> None:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+        result = c.fetchone()
+        if result:
+            embed = discord.Embed(
+                title="Mute Role Already Exists",
+                description="A mute role already exists for this server.",
+                color=0xE02B2B
+            )
+            await context.send(embed=embed)
+        else:
+            if custom_name is None:
+                custom_name = "Muted"
+            role = await context.guild.create_role(name=custom_name)
+            for channel in context.guild.channels:
+                await channel.set_permissions(role, send_messages=False)
+            c.execute("INSERT INTO GuildMuteRole (guild_id, role_id) VALUES (?, ?)", (context.guild.id, role.id))
+            conn.commit()
+            embed = discord.Embed(
+                title="Mute Role Created",
+                description=f"The mute role has been created with the name `{custom_name}`.",
+                color=0xBEBEFE
+            )
+            await context.send(embed=embed)
+
+        conn.commit()
+        conn.close()
+
+    @commands.hybrid_command(
+        name="rmmuterole",
+        description="Removes the mute role from the server.",
+        usage="rmmuterole",
+        aliases=["deletemuterole", "removemuterole"]
+    )
+    @commands.has_permissions(administrator=True)
+    async def rmmuterole(self, context: Context) -> None:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+        result = c.fetchone()
+        if result:
+            role_id = result[0]
+            role = context.guild.get_role(role_id)
+            if role:
+                await role.delete()
+            c.execute("DELETE FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+            conn.commit()
+            embed = discord.Embed(
+                title="Mute Role Removed",
+                description="The mute role has been removed from this server.",
+                color=0xBEBEFE
+            )
+            await context.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                title="Mute Role Not Found",
+                description="No mute role was found for this server.",
+                color=0xE02B2B
+            )
+            await context.send(embed=embed)
+        conn.commit()
+        conn.close()
+
+    @commands.hybrid_command(
+        name="mute",
+        description="Mutes a user in the server.",
+        usage="mute <user> <reason(optional)>",
+        aliases=["silence"]
+    )
+    @app_commands.describe(
+        user="The user that should be muted.",
+        reason="The reason why the user should be muted.",
+        length="The length of the mute in minutes."
+    )
+    @commands.has_permissions(manage_roles=True)
+    async def mute(self, context: Context, user: discord.Member, reason: str = None, length: int = None) -> None:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+        result = c.fetchone()
+        if result:
+            role_id = result[0]
+            role = context.guild.get_role(role_id)
+            if role:
+                await user.add_roles(role)
+                if length:
+                    end_time = datetime.now() + timedelta(minutes=length)
+                    c.execute("INSERT INTO GuildMutedUsers (guild_id, user_id, end_time) VALUES (?, ?, ?)",
+                              (context.guild.id, user.id, end_time.timestamp()))
+                    conn.commit()
+                else:
+                    c.execute("INSERT INTO Mutes (guild_id, user_id) VALUES (?, ?)", (context.guild.id, user.id))
+                    conn.commit()
+                embed = discord.Embed(
+                    title="User Muted",
+                    description=f"{user.mention} has been muted.",
+                    color=0xBEBEFE
+                )
+                embed.add_field(name="Reason", value=reason if reason else "No reason provided.")
+                embed.add_field(name="Length", value=f"{length} minutes" if length else "Indefinite")
+                await context.send(f"{user.mention} has been muted!")
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="Mute Role Not Found",
+                    description="No mute role was found for this server.",
+                    color=0xE02B2B
+                )
+                await context.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                title="Mute Role Not Found",
+                description="No mute role was found for this server.",
+                color=0xE02B2B
+            )
+            await context.send(embed=embed)
+        conn.commit()
+        conn.close()
+
+    @tasks.loop(minutes=1)
+    async def check_mutes(self):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        guild_mute_role = c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?")
+        c.execute("SELECT * FROM GuildMutedUsers")
+        result = c.fetchall()
+        for row in result:
+            guild_id, user_id, end_time = row
+            if datetime.now().timestamp() >= end_time:
+                guild = self.bot.get_guild(guild_id)
+                user = guild.get_member(user_id)
+                if user:
+                    role_id = guild_mute_role(self, guild_id)
+                    role = guild.get_role(role_id)
+                    if role:
+                        await user.remove_roles(role)
+                c.execute("DELETE FROM GuildMutedUsers WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+                conn.commit()
+        conn.close()
 
 
 async def setup(bot) -> None:

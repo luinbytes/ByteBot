@@ -4,15 +4,14 @@ import os
 import platform
 import random
 import sys
-import wavelink
+
 import aiosqlite
 import discord
-import sqlite3
-
-from wavelink import NodeStatus
+import wavelink
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
+from wavelink import NodeStatus
 
 from database import DatabaseManager
 
@@ -74,6 +73,7 @@ DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 # Status Channel (HARD CODED LOLOLOLOL)
 STATUS_CHANNEL = 1247174196069531679
 
+
 # Setup both of the loggers
 class LoggingFormatter(logging.Formatter):
     # Colors
@@ -125,16 +125,19 @@ logger.addHandler(file_handler)
 
 
 class DiscordBot(commands.Bot):
-    db_conn = sqlite3.connect(DB_PATH)
+    db_conn = aiosqlite.connect(DB_PATH)
     db = db_conn.cursor()
 
     def __init__(self) -> None:
-        async def get_prefix(bot, message: discord.Message) -> str:
-            db_conn = sqlite3.connect(DB_PATH)
-            db = db_conn.cursor()
-            guild_id = message.guild.id if message.guild else None
-            prefix = self.guild_prefix(db, guild_id)
-            return commands.when_mentioned_or(prefix)(bot, message)
+        async def get_prefix(bot, message: discord.Message) -> list[str]:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.cursor() as cursor:
+                    guild_id = message.guild.id if message.guild else None
+                    if isinstance(guild_id, int) or guild_id is None:
+                        prefix = await self.guild_prefix(guild_id)
+                        return commands.when_mentioned_or(prefix)(bot, message)
+                    else:
+                        raise TypeError(f"guild_id should be of type int or None, not {type(guild_id)}")
 
         super().__init__(
             command_prefix=get_prefix,
@@ -145,40 +148,39 @@ class DiscordBot(commands.Bot):
         self.config = config
         self.database = None
 
-    def guild_prefix(self, db, guild_id, prefix=None):
-        db_conn = sqlite3.connect(DB_PATH)
-        db = db_conn.cursor()
-        if prefix is not None:
-            # Write to the table
-            db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-            db_conn.commit()
-        else:
-            # Read from the table
-            cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
-            row = cursor.fetchone()
-            return row[0] if row else None
-        db.close()
+    async def guild_prefix(self, guild_id, prefix=None):
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.cursor() as cursor:
+                if prefix is not None:
+                    # Write to the table
+                    await cursor.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+                    await db.commit()
+                else:
+                    # Read from the table
+                    await cursor.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+                    row = await cursor.fetchone()
+                    return row[0] if row else None
 
-    def guild_autoroles(db, guild_id, role_id=None):
-        db_conn = sqlite3.connect(DB_PATH)
-        db = db_conn.cursor()
-        if role_id is not None:
-            # Write to the table
-            db.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
-            db.commit()
-        else:
-            # Read from the table
-            cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
-            row = cursor.fetchone()
-            return row[0] if row else None
-        db.close()
+    async def guild_autoroles(self, guild_id, role_id=None):
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.cursor() as cursor:
+                if role_id is not None:
+                    # Write to the table
+                    await cursor.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)",
+                                         (guild_id, role_id))
+                    await db.commit()
+                else:
+                    # Read from the table
+                    await cursor.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
+                    row = await cursor.fetchone()
+                    return row[0] if row else None
 
     async def init_db(self) -> None:
         async with aiosqlite.connect(
-            f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
+                f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
         ) as db:
             with open(
-                f"{os.path.realpath(os.path.dirname(__file__))}/database/schema.sql"
+                    f"{os.path.realpath(os.path.dirname(__file__))}/database/schema.sql"
             ) as file:
                 await db.executescript(file.read())
             await db.commit()
@@ -205,9 +207,14 @@ class DiscordBot(commands.Bot):
         Setup the game status task of the bot.
         """
         if os.getenv("IS_DEV_CONTAINER") == "True":
-            statuses = ["Reading discord.py docs...", "VSCode! (not good help me)", "Coding and Crying :)", "DEV MODE = [ON] >B)", "Something is probably broken rn", "Don't expect me to work rn! :D", "Thanks GitHub Copilot <3", "LLM's took my job."]
+            statuses = ["Reading discord.py docs...", "VSCode! (not good help me)", "Coding and Crying :)",
+                        "DEV MODE = [ON] >B)", "Something is probably broken rn", "Don't expect me to work rn! :D",
+                        "Thanks GitHub Copilot <3", "LLM's took my job."]
         else:
-            statuses = ["with knives rn", "Counter-Strike 2", "with firearms.", "Vote for me on top.gg!", "You should gamble...", "Lunar Client (ew)", "He actually remembered...", "League of Leg... Nope nvm.", "Minecraft 2", "Grand Theft Auto 7", "Half-Life 2.9 D:", "That fucking dota card game lmao", "Overwatch 1 season 3 (good times)"]
+            statuses = ["with knives rn", "Counter-Strike 2", "with firearms.", "Vote for me on top.gg!",
+                        "You should gamble...", "Lunar Client (ew)", "He actually remembered...",
+                        "League of Leg... Nope nvm.", "Minecraft 2", "Grand Theft Auto 7", "Half-Life 2.9 D:",
+                        "That fucking dota card game lmao", "Overwatch 1 season 3 (good times)"]
         await self.change_presence(activity=discord.Game(random.choice(statuses)))
         # channel = self.get_channel(1240624554544726037)
         # random_message = random.choice(
@@ -243,27 +250,28 @@ class DiscordBot(commands.Bot):
         )
 
     async def on_ready(self):
-        db_conn = sqlite3.connect(DB_PATH)
-        db = db_conn.cursor()
-        for guild in self.guilds:
-            prefix = self.guild_prefix(db, guild.id)
-            if prefix is None:
-                self.guild_prefix(db, guild.id, '>')
-                self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
-                # self.logger.info(f"Prefix for guild {guild.id} is {prefix}")
-        db_conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.cursor() as cursor:
+                for guild in self.guilds:
+                    guild_id = guild.id
+                    prefix = await self.guild_prefix(guild_id)
+                    if prefix is None:
+                        await self.guild_prefix(guild_id, '>')
+                        self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
+                        # self.logger.info(f"Prefix for guild {guild.id} is {prefix}")
 
         embed = discord.Embed(
-            title = "🟢 Online",
+            title="🟢 Online",
             description="Bot is now online and ready to use!",
             color=0x00FF00
         )
-        embed.add_field(name="Environment:", value="🔨 Development" if os.getenv("IS_DEV_CONTAINER") == "True" else "🫡 Production", inline=True)
+        embed.add_field(name="Environment:",
+                        value="🔨 Development" if os.getenv("IS_DEV_CONTAINER") == "True" else "🫡 Production",
+                        inline=True)
         embed.set_footer(text="ByteBot by @0x6c75", icon_url=self.user.avatar.url)
         await self.get_channel(STATUS_CHANNEL).send(embed=embed)
-            
 
-        await self.connect_nodes()
+        # await self.connect_nodes()
 
     async def on_message(self, message: discord.Message) -> None:
         """
@@ -331,8 +339,8 @@ class DiscordBot(commands.Bot):
         elif isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(
                 description="You are missing the permission(s) `"
-                + ", ".join(error.missing_permissions)
-                + "` to execute this command!",
+                            + ", ".join(error.missing_permissions)
+                            + "` to execute this command!",
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
@@ -340,8 +348,8 @@ class DiscordBot(commands.Bot):
         elif isinstance(error, commands.BotMissingPermissions):
             embed = discord.Embed(
                 description="I am missing the permission(s) `"
-                + ", ".join(error.missing_permissions)
-                + "` to fully perform this command!",
+                            + ", ".join(error.missing_permissions)
+                            + "` to fully perform this command!",
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
@@ -355,7 +363,8 @@ class DiscordBot(commands.Bot):
             )
             await context.send(embed=embed)
             await context.message.delete()
-        elif isinstance(error, commands.CommandInvokeError) and isinstance(error.original, AttributeError) and error.original.args[0] == "'NoneType' object has no attribute 'mention'":
+        elif isinstance(error, commands.CommandInvokeError) and isinstance(error.original, AttributeError) and \
+                error.original.args[0] == "'NoneType' object has no attribute 'mention'":
             embed = discord.Embed(
                 title="Error!",
                 description="You need to mention a user!",
@@ -370,13 +379,15 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             embed.add_field(name="Failed Command: ", value=f"`{context.message.content}`", inline=False)
-            embed.add_field(name="Hint", value="Use `help` to see all available categories. Use `help <category>` to see all commands in a category.", inline=False)
+            embed.add_field(name="Hint",
+                            value="Use `help` to see all available categories. Use `help <category>` to see all commands in a category.",
+                            inline=False)
             await context.send(embed=embed)
             await context.message.delete()
-            raise(error)
+            raise (error)
         else:
             raise error
-        
+
     async def connect_nodes(self) -> None:
         """
         Connects to Wavelink nodes.
@@ -392,6 +403,7 @@ class DiscordBot(commands.Bot):
             if node.status == NodeStatus.DISCONNECTED:
                 self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
                 await node._session.close()
+
 
 load_dotenv()
 
