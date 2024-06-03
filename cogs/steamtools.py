@@ -415,6 +415,9 @@ class SteamTools(commands.Cog, name="steamtools"):
                         tracked_by_users.append(user.name)
                     description = f"`{steamid64}`'s ban status has changed."
 
+                    # Extract nickname
+                    nickname = data.get('nickname', 'Unknown')
+
                     # Initialize the embed
                     embed = discord.Embed(
                         title="Ban Status Changed",
@@ -426,9 +429,6 @@ class SteamTools(commands.Cog, name="steamtools"):
                     if 'errors' in data:
                         embed.add_field(name="❌ FACEIT:", value="No FACEIT information available.", inline=False)
                     else:
-                        # Extract nickname
-                        nickname = data.get('nickname', 'Unknown')
-                    
                         # Update description
                         description = f"`{nickname}`'s ban status has changed."
                     
