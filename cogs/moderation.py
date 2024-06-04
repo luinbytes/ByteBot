@@ -1,10 +1,10 @@
 import json
 import os
 import re
-import sqlite3
 from datetime import datetime
 from datetime import timedelta
 
+import aiosqlite
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -15,70 +15,68 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 
-def guild_prefix(db, guild_id, prefix=None):
-    db_conn = sqlite3.connect(DB_PATH)
-    db = db_conn.cursor()
-    if prefix is not None:
-        # Write to the table
-        try:
-            db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-        except sqlite3.IntegrityError:
-            db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
-        db_conn.commit()
-    else:
-        # Read from the table
-        cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    db.close()
+async def guild_prefix(db, guild_id, prefix=None):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        c = await conn.cursor()
+        if prefix is not None:
+            # Write to the table
+            try:
+                await c.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+            except aiosqlite.IntegrityError:
+                await c.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+            await conn.commit()
+        else:
+            # Read from the table
+            await c.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
+            return row[0] if row else None
 
 
-def update_guild_prefix(db, guild_id, prefix):
-    db_conn = sqlite3.connect(DB_PATH)
-    db = db_conn.cursor()
-    db.execute("INSERT OR REPLACE INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-    db_conn.commit()
-    db.close()
+async def update_guild_prefix(db, guild_id, prefix):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        c = await conn.cursor()
+        await c.execute("INSERT OR REPLACE INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+        await conn.commit()
 
 
-def guild_autoroles(db, guild_id, role_id=None):
-    db_conn = sqlite3.connect(DB_PATH)
-    db = db_conn.cursor()
-    if role_id is not None:
-        # Write to the table
-        db.execute("INSERT OR REPLACE INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
-        db_conn.commit()
-    else:
-        # Read from the table
-        cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    db_conn.close()
+async def guild_autoroles(db, guild_id, role_id=None):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        c = await conn.cursor()
+        if role_id is not None:
+            # Write to the table
+            await c.execute("INSERT OR REPLACE INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)",
+                            (guild_id, role_id))
+            await conn.commit()
+        else:
+            # Read from the table
+            await c.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
+            return row[0] if row else None
 
 
-def guild_starboard_channels(self, guild_id, starboard_min_reactions=None, channel_id=None):
+async def guild_starboard_channels(self, guild_id, starboard_min_reactions=None, channel_id=None):
     # Connect to the database
-    db_conn = sqlite3.connect(DB_PATH)
-    db = db_conn.cursor()
+    async with aiosqlite.connect(DB_PATH) as conn:
+        c = await conn.cursor()
 
-    # If both starboard_min_reactions and channel_id are None, read from the database
-    if starboard_min_reactions is None and channel_id is None:
-        db.execute("SELECT * FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
-        rows = db.fetchall()
-        return rows
+        # If both starboard_min_reactions and channel_id are None, read from the database
+        if starboard_min_reactions is None and channel_id is None:
+            await c.execute("SELECT * FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
+            rows = await c.fetchall()
+            return rows
 
-    # If starboard_min_reactions is not None, update the starboard_min_reactions column
-    if starboard_min_reactions is not None:
-        db.execute("UPDATE GuildStarboardChannels SET starboard_min_reactions = ? WHERE guild_id = ?",
-                   (starboard_min_reactions, guild_id))
+        # If starboard_min_reactions is not None, update the starboard_min_reactions column
+        if starboard_min_reactions is not None:
+            await c.execute("UPDATE GuildStarboardChannels SET starboard_min_reactions = ? WHERE guild_id = ?",
+                            (starboard_min_reactions, guild_id))
 
-    # If channel_id is not None, update the channel_id column
-    if channel_id is not None:
-        db.execute("UPDATE GuildStarboardChannels SET channel_id = ? WHERE guild_id = ?", (channel_id, guild_id))
+        # If channel_id is not None, update the channel_id column
+        if channel_id is not None:
+            await c.execute("UPDATE GuildStarboardChannels SET channel_id = ? WHERE guild_id = ?",
+                            (channel_id, guild_id))
 
-    # Commit the changes and close the connection
-    db_conn.commit()
-    db_conn.close()
+        # Commit the changes
+        await conn.commit()
 
 
 class Moderation(commands.Cog, name="moderation"):
@@ -365,7 +363,7 @@ class Moderation(commands.Cog, name="moderation"):
         await context.defer()
         purged_messages = await context.channel.purge(limit=amount + 1)
         embed = discord.Embed(
-            description=f"**{context.mention}** cleared **{len(purged_messages) - 1}** messages!",
+            description=f"**{context.author.mention}** cleared **{len(purged_messages) - 1}** messages!",
             color=0xBEBEFE,
         )
         await context.channel.send(embed=embed)
@@ -403,7 +401,8 @@ class Moderation(commands.Cog, name="moderation"):
             await context.send(embed=embed)
         except Exception:
             embed = discord.Embed(
-                description="An error occurred while trying to ban the user. Make sure ID is an existing ID that belongs to a user.",
+                description="An error occurred while trying to ban the user. Make sure ID is an existing ID that "
+                            "belongs to a user.",
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
@@ -472,7 +471,7 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def autorole(self, context: Context, role: discord.Role):
-        guild_autoroles(self, context.guild.id, role.id)
+        await guild_autoroles(self, context.guild.id, role.id)
 
         for member in context.guild.members:
             if not member.bot:
@@ -508,7 +507,7 @@ class Moderation(commands.Cog, name="moderation"):
             )
             await context.send(embed=embed)
         else:
-            guild_starboard_channels(self, context.guild.id, channel.id)
+            await guild_starboard_channels(self, context.guild.id, channel.id)
             embed = discord.Embed(
                 title="Starboard Channel Set",
                 description=f"The starboard channel has been set to {channel.mention}.",
@@ -527,24 +526,25 @@ class Moderation(commands.Cog, name="moderation"):
         amount="The minimum amount of reactions needed to pin a message to the starboard."
     )
     async def sbreactionamount(self, context: Context, amount: int = None):
-        db_conn = sqlite3.connect(DB_PATH)
-        db = db_conn.cursor()
-        if amount is None:
-            min_reactions = guild_starboard_channels(self, context.guild.id)
-            embed = discord.Embed(
-                title="Current Starboard Reaction Amount",
-                description=f"The current minimum amount of reactions needed to pin a message to the starboard is `{min_reactions}`.",
-                color=0xBEBEFE
-            )
-            await context.send(embed=embed)
-        else:
-            guild_starboard_channels(self, context.guild.id, amount)
-            embed = discord.Embed(
-                title="Starboard Reaction Amount Set",
-                description=f"The minimum amount of reactions needed to pin a message to the starboard has been set to `{amount}`.",
-                color=0xBEBEFE
-            )
-            await context.send(embed=embed)
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            if amount is None:
+                min_reactions = await guild_starboard_channels(self, context.guild.id)
+                embed = discord.Embed(
+                    title="Current Starboard Reaction Amount",
+                    description=f"The current minimum amount of reactions needed to pin a message to the starboard is `{min_reactions}`.",
+                    color=0xBEBEFE
+                )
+                await context.send(embed=embed)
+            else:
+                await guild_starboard_channels(self, context.guild.id, amount)
+                embed = discord.Embed(
+                    title="Starboard Reaction Amount Set",
+                    description=f"The minimum amount of reactions needed to pin a message to the starboard has been "
+                                f"set to `{amount}`.",
+                    color=0xBEBEFE
+                )
+                await context.send(embed=embed)
 
     async def award(self, user_id: int, coins: int) -> None:
         """
@@ -554,21 +554,21 @@ class Moderation(commands.Cog, name="moderation"):
         :param coins: The number of coins to award.
 
         """
-        conn = sqlite3.connect("database/database.db")
-        c = conn.cursor()
-        c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
-        result = c.fetchone()
-        if result:
-            # User is registered, award coins
-            c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (coins, user_id))
-            conn.commit()
-        else:
-            # User is not registered, register them and award coins
-            user = self.bot.get_user(user_id)
-            username = user.name if user else "Unknown User"
-            c.execute("INSERT INTO UserEconomy (user_id, user_name, balance) VALUES (?, ?, ?)",
-                      (user_id, username, coins))
-            conn.commit()
+        async with aiosqlite.connect("database/database.db") as conn:
+            c = await conn.cursor()
+            await c.execute("SELECT balance FROM UserEconomy WHERE user_id = ?", (user_id,))
+            result = await c.fetchone()
+            if result:
+                # User is registered, award coins
+                await c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?", (coins, user_id))
+                await conn.commit()
+            else:
+                # User is not registered, register them and award coins
+                user = self.bot.get_user(user_id)
+                username = user.name if user else "Unknown User"
+                await c.execute("INSERT INTO UserEconomy (user_id, user_name, balance) VALUES (?, ?, ?)",
+                                (user_id, username, coins))
+                await conn.commit()
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
@@ -704,7 +704,7 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def setprefix(self, context: Context, prefix: str):
-        update_guild_prefix(self, context.guild.id, prefix)
+        await update_guild_prefix(self, context.guild.id, prefix)
         embed = discord.Embed(
             title="Prefix Set",
             description=f"The prefix for this server has been set to `{prefix}`.",
@@ -723,34 +723,32 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def createmuterole(self, context: Context, custom_name: str = None) -> None:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
-        result = c.fetchone()
-        if result:
-            embed = discord.Embed(
-                title="Mute Role Already Exists",
-                description="A mute role already exists for this server.",
-                color=0xE02B2B
-            )
-            await context.send(embed=embed)
-        else:
-            if custom_name is None:
-                custom_name = "Muted"
-            role = await context.guild.create_role(name=custom_name)
-            for channel in context.guild.channels:
-                await channel.set_permissions(role, send_messages=False)
-            c.execute("INSERT INTO GuildMuteRole (guild_id, role_id) VALUES (?, ?)", (context.guild.id, role.id))
-            conn.commit()
-            embed = discord.Embed(
-                title="Mute Role Created",
-                description=f"The mute role has been created with the name `{custom_name}`.",
-                color=0xBEBEFE
-            )
-            await context.send(embed=embed)
-
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+            result = await c.fetchone()
+            if result:
+                embed = discord.Embed(
+                    title="Mute Role Already Exists",
+                    description="A mute role already exists for this server.",
+                    color=0xE02B2B
+                )
+                await context.send(embed=embed)
+            else:
+                if custom_name is None:
+                    custom_name = "Muted"
+                role = await context.guild.create_role(name=custom_name)
+                for channel in context.guild.channels:
+                    await channel.set_permissions(role, send_messages=False)
+                await c.execute("INSERT INTO GuildMuteRole (guild_id, role_id) VALUES (?, ?)",
+                                (context.guild.id, role.id))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="Mute Role Created",
+                    description=f"The mute role has been created with the name `{custom_name}`.",
+                    color=0xBEBEFE
+                )
+                await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="rmmuterole",
@@ -760,32 +758,30 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def rmmuterole(self, context: Context) -> None:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
-        result = c.fetchone()
-        if result:
-            role_id = result[0]
-            role = context.guild.get_role(role_id)
-            if role:
-                await role.delete()
-            c.execute("DELETE FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
-            conn.commit()
-            embed = discord.Embed(
-                title="Mute Role Removed",
-                description="The mute role has been removed from this server.",
-                color=0xBEBEFE
-            )
-            await context.send(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="Mute Role Not Found",
-                description="No mute role was found for this server.",
-                color=0xE02B2B
-            )
-            await context.send(embed=embed)
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+            result = await c.fetchone()
+            if result:
+                role_id = result[0]
+                role = context.guild.get_role(role_id)
+                if role:
+                    await role.delete()
+                await c.execute("DELETE FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="Mute Role Removed",
+                    description="The mute role has been removed from this server.",
+                    color=0xBEBEFE
+                )
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="Mute Role Not Found",
+                    description="No mute role was found for this server.",
+                    color=0xE02B2B
+                )
+                await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="mute",
@@ -800,32 +796,39 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(manage_roles=True)
     async def mute(self, context: Context, user: discord.Member, reason: str = None, length: int = None) -> None:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
-        result = c.fetchone()
-        if result:
-            role_id = result[0]
-            role = context.guild.get_role(role_id)
-            if role:
-                await user.add_roles(role)
-                if length:
-                    end_time = datetime.now() + timedelta(minutes=length)
-                    c.execute("INSERT INTO GuildMutedUsers (guild_id, user_id, end_time) VALUES (?, ?, ?)",
-                              (context.guild.id, user.id, end_time.timestamp()))
-                    conn.commit()
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (context.guild.id,))
+            result = await c.fetchone()
+            if result:
+                role_id = result[0]
+                role = context.guild.get_role(role_id)
+                if role:
+                    await user.add_roles(role)
+                    if length:
+                        end_time = datetime.now() + timedelta(minutes=length)
+                        await c.execute("INSERT INTO GuildMutedUsers (guild_id, user_id, end_time) VALUES (?, ?, ?)",
+                                        (context.guild.id, user.id, end_time.timestamp()))
+                    else:
+                        await c.execute("INSERT INTO GuildMutedUsers (guild_id, user_id) VALUES (?, ?)",
+                                        (context.guild.id, user.id))
+                    await conn.commit()
+                    embed = discord.Embed(
+                        title="User Muted",
+                        description=f"{user.mention} has been muted.",
+                        color=0xBEBEFE
+                    )
+                    embed.add_field(name="Reason", value=reason if reason else "No reason provided.")
+                    embed.add_field(name="Length", value=f"{length} minutes" if length else "Indefinite")
+                    await context.send(f"{user.mention} has been muted!")
+                    await context.send(embed=embed)
                 else:
-                    c.execute("INSERT INTO Mutes (guild_id, user_id) VALUES (?, ?)", (context.guild.id, user.id))
-                    conn.commit()
-                embed = discord.Embed(
-                    title="User Muted",
-                    description=f"{user.mention} has been muted.",
-                    color=0xBEBEFE
-                )
-                embed.add_field(name="Reason", value=reason if reason else "No reason provided.")
-                embed.add_field(name="Length", value=f"{length} minutes" if length else "Indefinite")
-                await context.send(f"{user.mention} has been muted!")
-                await context.send(embed=embed)
+                    embed = discord.Embed(
+                        title="Mute Role Not Found",
+                        description="No mute role was found for this server.",
+                        color=0xE02B2B
+                    )
+                    await context.send(embed=embed)
             else:
                 embed = discord.Embed(
                     title="Mute Role Not Found",
@@ -833,36 +836,27 @@ class Moderation(commands.Cog, name="moderation"):
                     color=0xE02B2B
                 )
                 await context.send(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="Mute Role Not Found",
-                description="No mute role was found for this server.",
-                color=0xE02B2B
-            )
-            await context.send(embed=embed)
-        conn.commit()
-        conn.close()
 
-    @tasks.loop(minutes=1)
-    async def check_mutes(self):
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        guild_mute_role = c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?")
-        c.execute("SELECT * FROM GuildMutedUsers")
-        result = c.fetchall()
+
+@tasks.loop(minutes=1)
+async def check_mutes(self):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        c = await conn.cursor()
+        await c.execute("SELECT * FROM GuildMutedUsers")
+        result = await c.fetchall()
         for row in result:
             guild_id, user_id, end_time = row
             if datetime.now().timestamp() >= end_time:
                 guild = self.bot.get_guild(guild_id)
                 user = guild.get_member(user_id)
                 if user:
-                    role_id = guild_mute_role(self, guild_id)
+                    await c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (guild_id,))
+                    role_id = await c.fetchone()
                     role = guild.get_role(role_id)
                     if role:
                         await user.remove_roles(role)
-                c.execute("DELETE FROM GuildMutedUsers WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-                conn.commit()
-        conn.close()
+                await c.execute("DELETE FROM GuildMutedUsers WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+                await conn.commit()
 
 
 async def setup(bot) -> None:

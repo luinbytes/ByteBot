@@ -97,7 +97,7 @@ class SteamTools(commands.Cog, name="steamtools"):
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await context.send(embed=embed)
                 else:
-                    embed = discord.embed(
+                    embed = discord.Embed(
                         title="Error",
                         description="An error occurred while fetching the data.",
                         color=discord.Color.red()
@@ -214,102 +214,110 @@ class SteamTools(commands.Cog, name="steamtools"):
                 user_info = json.loads(data)
                 player_info = user_info['players'][0]
 
-        conn = aiosqlite.connect(DB_PATH)
-        cursor = conn.cursor()
-
-        # Fetch the channel_id from the GuildBanChannels table
-        cursor.execute('SELECT channel_id FROM GuildBanChannels WHERE guild_id = ?', (guild_id,))
-        row = cursor.fetchone()
-        if row is None:
-            embed = discord.Embed(
-                title="Ban Channel Not Set",
-                description="Please set the channel to post ban notifications using the `setbanchannel` command.",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-            return
-        channel_id = row[0]
-
-        cursor.execute('SELECT 1 FROM GuildSteamBans WHERE steamid_64 = ?', (steamid64,))
-        if cursor.fetchone():
-            cursor.execute('SELECT 1 FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?', (guild_id, steamid64))
-            if cursor.fetchone():
-                # Fetch the existing tracked_by field
-                cursor.execute('SELECT tracked_by FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
-                               (guild_id, steamid64))
-                existing_tracked_by = cursor.fetchone()[0]
-
-                # Check if the user's Discord ID is already in the tracked_by field
-                if str(context.author.id) not in existing_tracked_by.split(','):
-                    # Append the new Discord ID to the existing tracked_by field, with a comma if it's not empty
-                    new_tracked_by = existing_tracked_by + (',' if existing_tracked_by else '') + str(context.author.id)
-
-                    print(f'Before update: {new_tracked_by}')  # Debug print
-
-                    # Update the tracked_by field in the database
-                    cursor.execute('UPDATE GuildSteamBans SET tracked_by = ? WHERE guild_id = ? AND steamid_64 = ?',
-                                   (new_tracked_by, guild_id, steamid64))
-
-                    # Check if the UPDATE statement affected any rows
-                    if cursor.rowcount > 0:
-                        # Fetch the updated tracked_by field
-                        cursor.execute('SELECT tracked_by FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
-                                       (guild_id, steamid64))
-                        conn.commit()
-                        print(f'After update: {cursor.fetchone()[0]}')  # Debug print
-                        # print everything in tracked_by
-                        print(
-                            f'All tracked_by fields: {cursor.execute("SELECT tracked_by FROM GuildSteamBans").fetchall()}',
-                            end='\n\n')  # Debug print
-                    else:
-                        print('No rows updated')  # Debug print
-
-                    # Rest of your code...
+        async with aiosqlite.connect(DB_PATH) as conn:
+            async with conn.cursor() as cursor:
+                # Fetch the channel_id from the GuildBanChannels table
+                await cursor.execute('SELECT channel_id FROM GuildBanChannels WHERE guild_id = ?', (guild_id,))
+                row = await cursor.fetchone()
+                if row is None:
                     embed = discord.Embed(
-                        title="Steam ID Already Tracked",
-                        description=f"`{profile_name}` is already being tracked for bans. Your Discord ID has been added to the tracking list.",
+                        title="Ban Channel Not Set",
+                        description="Please set the channel to post ban notifications using the `setbanchannel` command.",
                         color=discord.Color.red()
                     )
-                    embed.add_field(name="Steam Profile",
-                                    value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
-                                    inline=False)
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await context.send(embed=embed)
                     return
+                channel_id = row[0]
+
+                await cursor.execute('SELECT 1 FROM GuildSteamBans WHERE steamid_64 = ?', (steamid64,))
+                if await cursor.fetchone():
+                    await cursor.execute('SELECT 1 FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
+                                         (guild_id, steamid64))
+                    if await cursor.fetchone():
+                        # Fetch the existing tracked_by field
+                        await cursor.execute(
+                            'SELECT tracked_by FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
+                            (guild_id, steamid64))
+                        existing_tracked_by = (await cursor.fetchone())[0]
+
+                        # Check if the user's Discord ID is already in the tracked_by field
+                        if str(context.author.id) not in existing_tracked_by.split(','):
+                            # Append the new Discord ID to the existing tracked_by field, with a comma if it's not empty
+                            new_tracked_by = existing_tracked_by + (',' if existing_tracked_by else '') + str(
+                                context.author.id)
+
+                            print(f'Before update: {new_tracked_by}')  # Debug print
+
+                            # Update the tracked_by field in the database
+                            await cursor.execute(
+                                'UPDATE GuildSteamBans SET tracked_by = ? WHERE guild_id = ? AND steamid_64 = ?',
+                                (new_tracked_by, guild_id, steamid64))
+
+                            # Check if the UPDATE statement affected any rows
+                            if cursor.rowcount > 0:
+                                # Fetch the updated tracked_by field
+                                await cursor.execute(
+                                    'SELECT tracked_by FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
+                                    (guild_id, steamid64))
+                                await conn.commit()
+                                print(f'After update: {(await cursor.fetchone())[0]}')  # Debug print
+                                # print everything in tracked_by
+                                print(
+                                    f'All tracked_by fields: {(await cursor.execute("SELECT tracked_by FROM GuildSteamBans")).fetchall()}',
+                                    end='\n\n')  # Debug print
+                            else:
+                                print('No rows updated')  # Debug print
+
+                            # Rest of your code...
+                            embed = discord.Embed(
+                                title="Steam ID Already Tracked",
+                                description=f"`{profile_name}` is already being tracked for bans. Your Discord ID has "
+                                            f"been added to the tracking list.",
+                                color=discord.Color.red()
+                            )
+                            embed.add_field(name="Steam Profile",
+                                            value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
+                                            inline=False)
+                            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                            await context.send(embed=embed)
+                            return
+                        else:
+                            embed = discord.Embed(
+                                title="Already Tracking Steam ID",
+                                description=f"You are already tracking {profile_name}.",
+                                color=discord.Color.red()
+                            )
+                            embed.add_field(name="Steam Profile",
+                                            value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
+                                            inline=False)
+                            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                            await context.send(embed=embed)
+                            return
+
+                    await cursor.execute(
+                        'UPDATE GuildSteamBans SET CommunityBanned = ?, VACBanned = ?, NumberOfVACBans = ?, '
+                        'DaysSinceLastBan = ?, NumberOfGameBans = ?, EconomyBan = ?, tracked_by = ?, channel_id = ? '
+                        'WHERE guild_id = ? AND steamid_64 = ?',
+                        (player_info['CommunityBanned'], player_info['VACBanned'], player_info['NumberOfVACBans'],
+                         player_info['DaysSinceLastBan'], player_info['NumberOfGameBans'], player_info['EconomyBan'],
+                         tracked_by, channel_id, guild_id, steamid64))
+                    await conn.commit()
                 else:
-                    embed = discord.Embed(
-                        title="Already Tracking Steam ID",
-                        description=f"You are already tracking {profile_name}.",
-                        color=discord.Color.red()
-                    )
-                    embed.add_field(name="Steam Profile",
-                                    value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
-                                    inline=False)
-                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                    await context.send(embed=embed)
-                    return
-
-            cursor.execute(
-                'UPDATE GuildSteamBans SET CommunityBanned = ?, VACBanned = ?, NumberOfVACBans = ?, DaysSinceLastBan = ?, NumberOfGameBans = ?, EconomyBan = ?, tracked_by = ?, channel_id = ? WHERE guild_id = ? AND steamid_64 = ?',
-                (player_info['CommunityBanned'], player_info['VACBanned'], player_info['NumberOfVACBans'],
-                 player_info['DaysSinceLastBan'], player_info['NumberOfGameBans'], player_info['EconomyBan'],
-                 tracked_by, channel_id, guild_id, steamid64))
-            conn.commit()
-        else:
-            cursor.execute(
-                'INSERT INTO GuildSteamBans (guild_id, channel_id, tracked_by, steamid_64, CommunityBanned, VACBanned, NumberOfVACBans, DaysSinceLastBan, NumberOfGameBans, EconomyBan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (guild_id, channel_id, tracked_by, steamid64, player_info['CommunityBanned'], player_info['VACBanned'],
-                 player_info['NumberOfVACBans'], player_info['DaysSinceLastBan'], player_info['NumberOfGameBans'],
-                 player_info['EconomyBan']))
-            conn.commit()
-
-        conn.commit()
-        conn.close()
+                    await cursor.execute(
+                        'INSERT INTO GuildSteamBans (guild_id, channel_id, tracked_by, steamid_64, CommunityBanned, '
+                        'VACBanned, NumberOfVACBans, DaysSinceLastBan, NumberOfGameBans, EconomyBan) VALUES (?, ?, ?, '
+                        '?, ?, ?, ?, ?, ?, ?)',
+                        (guild_id, channel_id, tracked_by, steamid64, player_info['CommunityBanned'],
+                         player_info['VACBanned'],
+                         player_info['NumberOfVACBans'], player_info['DaysSinceLastBan'],
+                         player_info['NumberOfGameBans'],
+                         player_info['EconomyBan']))
+                    await conn.commit()
 
         embed = discord.Embed(
             title="Tracking Steam ID",
-            description=f"{profile_name} is now being tracked for bans.",
+            description=f"`{profile_name}` is now being tracked for bans.",
             color=discord.Color.green()
         )
         embed.add_field(name="Steam ID", value=f"`{steamid64}`", inline=False)
@@ -349,38 +357,39 @@ class SteamTools(commands.Cog, name="steamtools"):
                 await cursor.execute('SELECT tracked_by FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
                                      (guild_id, steamid64))
                 row = await cursor.fetchone()
-        if row is None:
-            embed = discord.Embed(
-                title="Steam ID Not Tracked",
-                description=f"`{profile_name}` is not being tracked for bans.",
-                color=discord.Color.red()
-            )
-            embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
-                            inline=False)
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-        elif int(row[0]) != requested_by:
-            embed = discord.Embed(
-                title="Untrack Not Allowed",
-                description=f"You are not allowed to untrack `{profile_name}` because you did not track them.",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
-                            inline=False)
-            await context.send(embed=embed)
-        else:
-            await cursor.execute('DELETE FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
-                                 (guild_id, steamid64))
-            embed = discord.Embed(
-                title="Steam ID Untracked",
-                description=f"`{profile_name}` is no longer being tracked for bans.",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
-                            inline=False)
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
+                if row is None:
+                    embed = discord.Embed(
+                        title="Steam ID Not Tracked",
+                        description=f"`{profile_name}` is not being tracked for bans.",
+                        color=discord.Color.red()
+                    )
+                    embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
+                                    inline=False)
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                elif int(row[0]) != requested_by:
+                    embed = discord.Embed(
+                        title="Untrack Not Allowed",
+                        description=f"You are not allowed to untrack `{profile_name}` because you did not track them.",
+                        color=discord.Color.red()
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
+                                    inline=False)
+                    await context.send(embed=embed)
+                else:
+                    await cursor.execute('DELETE FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
+                                         (guild_id, steamid64))
+                    await conn.commit()
+                    embed = discord.Embed(
+                        title="Steam ID Untracked",
+                        description=f"`{profile_name}` is no longer being tracked for bans.",
+                        color=discord.Color.green()
+                    )
+                    embed.add_field(name="", value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})",
+                                    inline=False)
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="tracking",
@@ -445,7 +454,6 @@ class SteamTools(commands.Cog, name="steamtools"):
                 async with session.get(
                         f"{get_player_bans}key={steam_api_key}&access_token={access_token}&steamids={steamid64}") as resp:
                     data = await resp.text()
-                    print(data)
                     user_info = json.loads(data)
                     player_info = user_info['players'][0]
 
@@ -496,7 +504,8 @@ class SteamTools(commands.Cog, name="steamtools"):
                     for tracked_by_id in tracked_by_ids:
                         user = await self.bot.fetch_user(int(tracked_by_id.strip()))
                         tracked_by_users.append(user.name)
-                    description = f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status has changed.\n\n" + "\n".join(
+                    description = (f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status has "
+                                   f"changed.\n\n") + "\n".join(
                         changes)
 
                     # Extract nickname
@@ -515,7 +524,8 @@ class SteamTools(commands.Cog, name="steamtools"):
                         embed.add_field(name="❌ FACEIT:", value="No FACEIT information available.", inline=False)
                     else:
                         # Update description
-                        description = f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status has changed.\n\n" + "\n".join(
+                        description = (f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status "
+                                       f"has changed.\n\n") + "\n".join(
                             changes)
 
                         # Fetch the names and URLs of the first 5 friends

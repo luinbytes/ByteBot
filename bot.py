@@ -204,7 +204,7 @@ class DiscordBot(commands.Bot):
     @tasks.loop(minutes=5.0)
     async def status_task(self) -> None:
         """
-        Setup the game status task of the bot.
+        Set up the game status task of the bot.
         """
         if os.getenv("IS_DEV_CONTAINER") == "True":
             statuses = ["Reading discord.py docs...", "VSCode! (not good help me)", "Coding and Crying :)",
