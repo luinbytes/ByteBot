@@ -279,7 +279,7 @@ class DiscordBot(commands.Bot):
         executed_command = str(split[0])
         if context.guild is not None:
             self.logger.info(
-                f"Executed {executed_command} command in {context.guild.name} (ID: {context.guild.id}) by {context.author} (ID: {context.author.id})"
+                f"Executed {executed_command} command in {context.guild.name} (ID: {context.guild.id}) (ChannelID: {context.channel.id}) by {context.author} (ID: {context.author.id})"
             )
         else:
             self.logger.info(

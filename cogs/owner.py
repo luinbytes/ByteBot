@@ -1,10 +1,12 @@
+import json
+import os
+import sqlite3
+
+import aiosqlite
 import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
-import sqlite3
-import os
-import json
 
 DATABASE_DIR = "database"
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +14,7 @@ DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
+
 
 class Owner(commands.Cog, name="owner"):
     def __init__(self, bot) -> None:
@@ -28,22 +31,21 @@ class Owner(commands.Cog, name="owner"):
         with open('config.json', 'w') as f:
             json.dump(config, f, indent=4)
 
-    def guild_prefix(db, guild_id, prefix=None):
-        db_conn = sqlite3.connect(DB_PATH)
-        db = db_conn.cursor()
-        if prefix is not None:
-            # Write to the table
-            try:
-                db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-            except sqlite3.IntegrityError:
-                db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
-            db_conn.commit()
-        else:
-            # Read from the table
-            cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
-            row = cursor.fetchone()
-            return row[0] if row else None
-        db.close()
+    async def guild_prefix(db, guild_id, prefix=None):
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            if prefix is not None:
+                # Write to the table
+                try:
+                    await c.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+                except aiosqlite.IntegrityError:
+                    await c.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+                await conn.commit()
+            else:
+                # Read from the table
+                await c.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+                row = await c.fetchone()
+                return row[0] if row else None
 
     def guild_autoroles(db, guild_id, role_id=None):
         db_conn = sqlite3.connect(DB_PATH)
@@ -64,11 +66,15 @@ class Owner(commands.Cog, name="owner"):
         db = db_conn.cursor()
         if channel_id is not None and starboard_min_reactions is not None:
             # Write to the table
-            db.execute("INSERT INTO GuildStarboardChannels (guild_id, channel_id, starboard_min_reactions) VALUES (?, ?, ?)", (guild_id, channel_id, starboard_min_reactions))
+            db.execute(
+                "INSERT INTO GuildStarboardChannels (guild_id, channel_id, starboard_min_reactions) VALUES (?, ?, ?)",
+                (guild_id, channel_id, starboard_min_reactions))
             db.commit()
         else:
             # Read from the table
-            cursor = db.execute("SELECT channel_id, starboard_min_reactions FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
+            cursor = db.execute(
+                "SELECT channel_id, starboard_min_reactions FROM GuildStarboardChannels WHERE guild_id = ?",
+                (guild_id,))
             row = cursor.fetchone()
             return row if row else None
         db.close()
@@ -273,10 +279,10 @@ class Owner(commands.Cog, name="owner"):
         await context.send(embed=embed)
 
     @commands.hybrid_command(
-            name="winmultiplier",
-            description="Check or set the global win muliplier.",
-            usage="<amount>",
-            aliases=["winmulti", "wmulti"]
+        name="winmultiplier",
+        description="Check or set the global win muliplier.",
+        usage="<amount>",
+        aliases=["winmulti", "wmulti"]
     )
     @commands.is_owner()
     @app_commands.describe(amount="The amount to set the win multiplier to.")
@@ -307,12 +313,12 @@ class Owner(commands.Cog, name="owner"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
-            
+
     @commands.hybrid_command(
-            name="lossmultiplier",
-            description="Check or set the global loss muliplier.",
-            usage="<amount>",
-            aliases=["lossmulti", "lmulti"]
+        name="lossmultiplier",
+        description="Check or set the global loss muliplier.",
+        usage="<amount>",
+        aliases=["lossmulti", "lmulti"]
     )
     @commands.is_owner()
     @app_commands.describe(amount="The amount to set the loss multiplier to.")
@@ -410,7 +416,7 @@ class Owner(commands.Cog, name="owner"):
             embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar)
             await ctx.send(embed=embed)
             return
-        
+
         c.execute("UPDATE UserEconomy SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
         conn.commit()
 
@@ -540,9 +546,51 @@ class Owner(commands.Cog, name="owner"):
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="sendmsgtoserver",
+        description="Send a message to a server.",
+        usage="<server_id> <channel_id> <message>",
+        aliases=["sendmsg"]
+    )
+    @app_commands.describe(
+        server_id="The ID of the server to send the message to.",
+        channel_id="The ID of the channel to send the message to.",
+        message="The message to send."
+    )
+    @commands.is_owner()
+    async def sendmsgtoserver(self, context: Context, server_id: int, channel_id: int, *, message: str):
+        """
+        Send a message to a server.
+
+        :param server_id: The ID of the server to send the message to.
+        :param channel_id: The ID of the channel to send the message to.
+        :param message: The message to send.
+        """
+        try:
+            server = self.bot.get_guild(server_id)
+            channel = server.get_channel(channel_id)
+            await channel.send(message)
+            embed = discord.Embed(
+                title="Message Sent",
+                description="The message has been sent successfully.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error",
+                description=f"An error occurred: {e}",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+
+
 @commands.Cog.listener()
 async def on_disconnect(self):
     conn.close()
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Owner(bot))
