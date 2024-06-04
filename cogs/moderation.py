@@ -989,12 +989,12 @@ class Moderation(commands.Cog, name="moderation"):
                         guild = self.bot.get_guild(guild_id_2)
                         channel = guild.get_channel(channel_id_2) if guild else None
                         if channel and not message.author == self.bot.user:
-                            await channel.send(f"{message.author.mention}: {message.content}")
+                            await channel.send(f"@silent {message.author.mention}: {message.content}")
                     elif guild_id_2 == message.guild.id and channel_id_2 == message.channel.id:
                         guild = self.bot.get_guild(guild_id_1)
                         channel = guild.get_channel(channel_id_1) if guild else None
                         if channel and not message.author == self.bot.user:
-                            await channel.send(f"{message.author.mention}: {message.content}")
+                            await channel.send(f"@silent {message.author.mention}: {message.content}")
 
 
 @tasks.loop(minutes=1)
