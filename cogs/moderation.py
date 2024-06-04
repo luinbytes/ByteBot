@@ -485,7 +485,7 @@ class Moderation(commands.Cog, name="moderation"):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        autorole_id = guild_autoroles(self, member.guild.id)
+        autorole_id = await guild_autoroles(self, member.guild.id)
         if autorole_id:
             role = member.guild.get_role(autorole_id)
             if role:
