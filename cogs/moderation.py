@@ -837,6 +837,165 @@ class Moderation(commands.Cog, name="moderation"):
                 )
                 await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="chatsync",
+        description="Syncs the chat of two channels on 2 different servers.",
+        usage="chatsync <channelID-1> <channelID-2>",
+        aliases=["syncchat", "chatlink"]
+    )
+    @app_commands.describe(
+        channel2="The ID of the second channel."
+    )
+    @commands.has_permissions(administrator=True)
+    async def chatsync(self, context: Context, channel2: int) -> None:
+        # Fetch the channels from their IDs
+        channel1 = context.channel
+        channel2 = await self.bot.fetch_channel(channel2)
+
+        # Get the guilds from the channels
+        guild1 = channel1.guild
+        guild2 = channel2.guild
+
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute(
+                "SELECT * FROM ChatSync WHERE (channel_id_1 = ? AND channel_id_2 = ?) OR (channel_id_1 = ? AND channel_id_2 = ?)",
+                (channel1.id, channel2.id, channel2.id, channel1.id))
+            result = await c.fetchone()
+            if result:
+                embed = discord.Embed(
+                    title="❌ Chat Sync Already Exists",
+                    description="A chat sync already exists between these two channels.",
+                    color=0xE02B2B
+                )
+                await context.send(embed=embed)
+            else:
+                await c.execute(
+                    "INSERT INTO ChatSync (channel_id_1, guild_id_1, channel_id_2, guild_id_2) VALUES (?, ?, ?, ?)",
+                    (channel1.id, guild1.id, channel2.id, guild2.id))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="✅ Chat Sync Created",
+                    description=f"The chat between {channel1.mention} and {channel2.mention} has been synced.",
+                    color=0xBEBEFE
+                )
+                await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="unsyncchat",
+        description="Unsyncs the chat of two channels on 2 different servers.",
+        usage="unsyncchat <channelID-1> <channelID-2>",
+        aliases=["unlinkchat"]
+    )
+    @app_commands.describe(
+        channel2="The ID of the second channel."
+    )
+    @commands.has_permissions(administrator=True)
+    async def unsyncchat(self, context: Context, channel2: int) -> None:
+        # Fetch the channels from their IDs
+        channel1 = context.channel
+        channel2 = await self.bot.fetch_channel(channel2)
+
+        # Get the guilds from the channels
+        guild1 = channel1.guild
+        guild2 = channel2.guild
+
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute(
+                "SELECT * FROM ChatSync WHERE (channel_id_1 = ? AND channel_id_2 = ?) OR (channel_id_1 = ? AND channel_id_2 = ?)",
+                (channel1.id, channel2.id, channel2.id, channel1.id))
+            result = await c.fetchone()
+            if result:
+                await c.execute(
+                    "DELETE FROM ChatSync WHERE (guild_id_1 = ? AND channel_id_1 = ? AND guild_id_2 = ? AND channel_id_2 = ?) OR (guild_id_1 = ? AND channel_id_1 = ? AND guild_id_2 = ? AND channel_id_2 = ?)",
+                    (channel1.id, guild1.id, channel2.id, guild2.id, channel2.id, guild2.id, channel1.id, guild1.id))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="✅ Chat Sync Removed",
+                    description=f"The chat between {channel1.mention} and {channel2.mention} has been unsynced.",
+                    color=0xBEBEFE
+                )
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="❌ Chat Sync Not Found",
+                    description="No chat sync was found between these two channels.",
+                    color=0xE02B2B
+                )
+                await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="syncedchats",
+        description="Shows the synced chats in the current channel.",
+        usage="syncedchats",
+        aliases=["syncedchannels", "syncedchat", "syncedchannel"]
+    )
+    async def syncedchats(self, context: Context) -> None:
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute(
+                "SELECT * FROM ChatSync WHERE guild_id_1 = ? OR guild_id_2 = ?",
+                (context.guild.id, context.guild.id))
+            result = await c.fetchall()
+            if result:
+                embed = discord.Embed(
+                    title="Synced Chats",
+                    description="The following channels are synced with this channel:",
+                    color=0xBEBEFE
+                )
+                for row in result:
+                    channel_id_1, guild_id_1, channel_id_2, guild_id_2 = row
+                    if guild_id_1 == context.guild.id:
+                        guild = self.bot.get_guild(guild_id_2)
+                        channel = guild.get_channel(channel_id_2) if guild else None
+                        if channel:
+                            embed.add_field(name=f"{channel.guild.name} - #{channel.name}", value=f"ID: {channel.id}",
+                                            inline=False)
+                    elif guild_id_2 == context.guild.id:
+                        guild = self.bot.get_guild(guild_id_1)
+                        channel = guild.get_channel(channel_id_1) if guild else None
+                        if channel:
+                            embed.add_field(name=f"{channel.guild.name} - #{channel.name}", value=f"ID: {channel.id}",
+                                            inline=False)
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="No Synced Chats",
+                    description="No channels are synced with this channel.",
+                    color=0xE02B2B
+                )
+                await context.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+
+        prefix = await guild_prefix(self, message.guild.id)
+        if message.content.startswith(prefix):
+            return
+
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute(
+                "SELECT * FROM ChatSync WHERE (guild_id_1 = ? AND channel_id_1 = ?) OR (guild_id_2 = ? AND channel_id_2 = ?)",
+                (message.guild.id, message.channel.id, message.guild.id, message.channel.id))
+            result = await c.fetchall()
+            if result:
+                for row in result:
+                    channel_id_1, guild_id_1, channel_id_2, guild_id_2 = row
+                    if guild_id_1 == message.guild.id and channel_id_1 == message.channel.id:
+                        guild = self.bot.get_guild(guild_id_2)
+                        channel = guild.get_channel(channel_id_2) if guild else None
+                        if channel and not message.author == self.bot.user:
+                            await channel.send(f"{message.author.mention}: {message.content}")
+                    elif guild_id_2 == message.guild.id and channel_id_2 == message.channel.id:
+                        guild = self.bot.get_guild(guild_id_1)
+                        channel = guild.get_channel(channel_id_1) if guild else None
+                        if channel and not message.author == self.bot.user:
+                            await channel.send(f"{message.author.mention}: {message.content}")
+
 
 @tasks.loop(minutes=1)
 async def check_mutes(self):
