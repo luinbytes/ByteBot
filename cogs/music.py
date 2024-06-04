@@ -1,12 +1,15 @@
-import discord
-import wavelink
+import asyncio
 import logging
 from datetime import timedelta
+from typing import cast
+
+import discord
+import wavelink
+from discord import app_commands, Message
 from discord.ext import commands
-from discord import app_commands
 from discord.ext.commands import Context
 from wavelink.exceptions import LavalinkLoadException
-from typing import cast
+
 
 class Music(commands.Cog, name="music"):
     def __init__(self, bot) -> None:
@@ -23,7 +26,7 @@ class Music(commands.Cog, name="music"):
         player: wavelink.Player | None = payload.player
         if not player:
             return
-        
+
         track: wavelink.Playable = payload.track
         track_duration = str(timedelta(milliseconds=track.length))
         if '.' in track_duration:
@@ -48,11 +51,12 @@ class Music(commands.Cog, name="music"):
 
         if not player:
             return
-        
+
         if player.queue:
             pass
         else:
             self.channel = None
+            await asyncio.sleep(60)
             await player.disconnect()
 
     @commands.hybrid_command(
@@ -100,7 +104,7 @@ class Music(commands.Cog, name="music"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             return await context.send(embed=embed)
-        
+
         self.channel = context.channel
         destination = context.author.voice.channel
 
@@ -122,7 +126,7 @@ class Music(commands.Cog, name="music"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             return await context.send(embed=embed)
-        
+
         if not context.guild.voice_client:
             await destination.connect(cls=wavelink.Player, self_deaf=True)
 
@@ -158,7 +162,7 @@ class Music(commands.Cog, name="music"):
         usage="stop",
         aliases=["leave"]
     )
-    async def stop(self, context: commands.Context) -> None:
+    async def stop(self, context: commands.Context) -> Message:
         player: wavelink.Player = context.guild.voice_client
         if not context.author.voice:
             embed = discord.Embed(
@@ -283,15 +287,15 @@ class Music(commands.Cog, name="music"):
                 description="The music has been resumed.",
                 color=discord.Colour.green()
             )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)    
-            
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+
         await context.send(embed=embed)
 
     @commands.hybrid_command(
-        name = "skip",
-        description = "Skip the current song.",
-        usage = "skip",
-        aliases = ["next"]
+        name="skip",
+        description="Skip the current song.",
+        usage="skip",
+        aliases=["next"]
     )
     async def skip(self, context: commands.Context) -> None:
         player: wavelink.Player = context.guild.voice_client
@@ -455,7 +459,7 @@ class Music(commands.Cog, name="music"):
         if player.playing:
             track = player.current
             track_duration = str(timedelta(milliseconds=track.length))
-            
+
             embed = discord.Embed(
                 title="Now Playing",
                 description=f"**{track.title} - {track.author}**",
@@ -494,7 +498,8 @@ class Music(commands.Cog, name="music"):
                 track_duration = str(timedelta(milliseconds=track.length))
                 if '.' in track_duration:
                     track_duration = track_duration.split('.')[0]
-                embed.add_field(name=f"#{index + 1} >> {track.title} - {track.author}", value=f"Duration: {track_duration}", inline=False)
+                embed.add_field(name=f"#{index + 1} >> {track.title} - {track.author}",
+                                value=f"Duration: {track_duration}", inline=False)
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
         else:
@@ -505,6 +510,7 @@ class Music(commands.Cog, name="music"):
             )
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Music(bot))
