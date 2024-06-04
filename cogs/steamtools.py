@@ -582,9 +582,20 @@ class SteamTools(commands.Cog, name="steamtools"):
         aliases=["faceitprofile", "faceituser"]
     )
     @app_commands.describe(
-        steamid64="The steamID64 of the user to scrape info from."
+        steamid="The steamID of the user to scrape info from."
     )
-    async def faceit(self, context: Context, steamid64: str) -> None:
+    async def faceit(self, context: Context, steamid: str) -> None:
+        try:
+            steamid64 = SteamID.from_url(steamid).as_64
+        except ValueError:
+            embed = discord.Embed(
+                title="Invalid Steam ID",
+                description="Please enter a valid Steam ID, Steam ID3, Steam ID32, Steam ID64, or Steam profile URL.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
         params = {'game': 'cs2', 'game_player_id': f'{steamid64}'}
         async with aiohttp.ClientSession() as session:
             async with session.get(player_search_url, params=params, headers=headers) as response:
