@@ -71,39 +71,57 @@ class SteamTools(commands.Cog, name="steamtools"):
             async with session.get(f'https://api.snaz.in/v2/steam/user-profile/{steamid64}') as r:
                 if r.status == 200:
                     data = await r.json()
+                    if data is None:
+                        return
                     embed = discord.Embed(
-                        title=data['username'],
-                        url=f"https://steamcommunity.com/id/{data['custom_url']}",
-                        description=data['summary']['text'],
                         color=discord.Color.blue()
                     )
-                    embed.set_thumbnail(url=data['avatar'])
-                    embed.set_image(url=data['background_url'])
-                    embed.add_field(name="Bans",
-                                    value=f"Community: {data['bans']['community']}\nGame: {data['bans']['game']}\nTrade: {data['bans']['trade']}\nVAC: {data['bans']['vac']}",
-                                    inline=False)
-                    embed.add_field(name="Level", value=data['level']['formatted'], inline=True)
-                    embed.add_field(name="Member Since", value=data['badge']['meta'], inline=True)
-                    friends = data['counts']['friends']['formatted'] if data['counts']['friends'] else 'None/Private'
-                    embed.add_field(name="Friends", value=friends, inline=True)
-                    embed.add_field(name="Games", value=data['counts']['games']['formatted'], inline=True)
-                    embed.add_field(name="Badges", value=data['counts']['badges']['formatted'], inline=True)
-                    embed.add_field(name="Artwork", value=data['counts']['artwork']['formatted'], inline=True)
-                    embed.add_field(name="Screenshots", value=data['counts']['screenshots']['formatted'], inline=True)
-                    workshop_files = data['counts']['workshop_files']['formatted'] if data['counts'][
-                        'workshop_files'] else 'None/Private'
-                    embed.add_field(name="Workshop Files", value=workshop_files, inline=True)
-                    embed.add_field(name="Primary Group", value=data['primary_group']['name'], inline=True)
-                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                    await context.send(embed=embed)
-                else:
-                    embed = discord.Embed(
-                        title="Error",
-                        description="An error occurred while fetching the data.",
-                        color=discord.Color.red()
-                    )
-                    embed.add_field(name="Status Code", value=r.status, inline=False)
-                    embed.add_field(name="Response", value=await r.text(), inline=False)
+                    if data is not None:
+                        embed.title = data.get('username', 'Unknown')
+                        embed.url = f"https://steamcommunity.com/id/{data.get('custom_url', 'Unknown')}"
+                        summary = data.get('summary', {})
+                        if summary is not None:
+                            embed.description = summary.get('text', 'Unknown')
+                        embed.set_thumbnail(url=data.get('avatar', 'Unknown'))
+                        embed.set_image(url=data.get('background_url', 'Unknown'))
+                        bans = data.get('bans', {})
+                        if bans is not None:
+                            embed.add_field(name="Bans",
+                                            value=f"Community: {bans.get('community', 'Unknown')}\nGame: {bans.get('game', 'Unknown')}\nTrade: {bans.get('trade', 'Unknown')}\nVAC: {bans.get('vac', 'Unknown')}",
+                                            inline=False)
+                        level = data.get('level', {})
+                        if level is not None:
+                            embed.add_field(name="Level", value=level.get('formatted', 'Unknown'), inline=True)
+                        badge = data.get('badge', {})
+                        if badge is not None:
+                            embed.add_field(name="Member Since", value=badge.get('meta', 'Unknown'), inline=True)
+                        counts = data.get('counts', {})
+                        if counts is not None:
+                            friends = counts.get('friends', {})
+                            if friends is not None:
+                                embed.add_field(name="Friends", value=friends.get('formatted', 'None/Private'),
+                                                inline=True)
+                            games = counts.get('games', {})
+                            if games is not None:
+                                embed.add_field(name="Games", value=games.get('formatted', 'Unknown'), inline=True)
+                            badges = counts.get('badges', {})
+                            if badges is not None:
+                                embed.add_field(name="Badges", value=badges.get('formatted', 'Unknown'), inline=True)
+                            artwork = counts.get('artwork', {})
+                            if artwork is not None:
+                                embed.add_field(name="Artwork", value=artwork.get('formatted', 'Unknown'), inline=True)
+                            screenshots = counts.get('screenshots', {})
+                            if screenshots is not None:
+                                embed.add_field(name="Screenshots", value=screenshots.get('formatted', 'Unknown'),
+                                                inline=True)
+                            workshop_files = counts.get('workshop_files', {})
+                            if workshop_files is not None:
+                                embed.add_field(name="Workshop Files",
+                                                value=workshop_files.get('formatted', 'None/Private'), inline=True)
+                        primary_group = data.get('primary_group', {})
+                        if primary_group is not None:
+                            embed.add_field(name="Primary Group", value=primary_group.get('name', 'Unknown'),
+                                            inline=True)
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await context.send(embed=embed)
 
