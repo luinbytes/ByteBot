@@ -125,10 +125,9 @@ logger.addHandler(file_handler)
 
 
 class DiscordBot(commands.Bot):
-    db_conn = aiosqlite.connect(DB_PATH)
-    db = db_conn.cursor()
-
     def __init__(self) -> None:
+        self.status_message = None
+
         async def get_prefix(bot, message: discord.Message) -> list[str]:
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.cursor() as cursor:
@@ -260,18 +259,7 @@ class DiscordBot(commands.Bot):
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
                         # self.logger.info(f"Prefix for guild {guild.id} is {prefix}")
 
-        embed = discord.Embed(
-            title="🟢 Online",
-            description="Bot is now online and ready to use!",
-            color=0x00FF00
-        )
-        embed.add_field(name="Environment:",
-                        value="🔨 Development" if os.getenv("IS_DEV_CONTAINER") == "True" else "🫡 Production",
-                        inline=True)
-        embed.set_footer(text="ByteBot by @0x6c75", icon_url=self.user.avatar.url)
-        await self.get_channel(STATUS_CHANNEL).send(embed=embed)
-
-        # await self.connect_nodes()
+        await self.connect_nodes()
 
     async def on_message(self, message: discord.Message) -> None:
         """

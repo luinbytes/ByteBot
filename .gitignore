@@ -163,3 +163,15 @@ application.yml
 plugins/youtube-plugin-1.3.0.jar
 /.vscode
 database/database.db
+database.db
+.idea/ByteBot.iml
+.idea/dataSources.xml
+.idea/discord.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/prettier.xml
+.idea/sqldialects.xml
+.idea/vcs.xml
+.idea/inspectionProfiles/profiles_settings.xml
+database/database.db
+database/database.db
