@@ -70,9 +70,6 @@ DATABASE_DIR = "database"
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
-# Status Channel (HARD CODED LOLOLOLOL)
-STATUS_CHANNEL = 1247174196069531679
-
 
 # Setup both of the loggers
 class LoggingFormatter(logging.Formatter):
