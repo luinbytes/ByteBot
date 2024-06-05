@@ -976,42 +976,32 @@ class Moderation(commands.Cog, name="moderation"):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        print(f"Received message from {message.author}")
         if message.author.bot:
-            print("Message author is a bot, returning.")
             return
 
         prefix = await guild_prefix(self, message.guild.id)
         if message.content.startswith(prefix):
-            print("Message starts with prefix, returning.")
             return
 
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
-            print("Connected to the database.")
             await c.execute(
                 "SELECT * FROM ChatSync WHERE (guild_id_1 = ? AND channel_id_1 = ?) OR (guild_id_2 = ? AND channel_id_2 = ?)",
                 (message.guild.id, message.channel.id, message.guild.id, message.channel.id))
             result = await c.fetchall()
-            print(f"Executed SQL query, result: {result}")
             if result:
                 for row in result:
                     channel_id_1, guild_id_1, channel_id_2, guild_id_2 = row
-                    print(f"Processing row: {row}")
                     if guild_id_1 == message.guild.id and channel_id_1 == message.channel.id:
                         guild = self.bot.get_guild(guild_id_2)
                         channel = guild.get_channel(channel_id_2) if guild else None
-                        print(f"Found guild: {guild}, channel: {channel}")
                         if channel and not message.author == self.bot.user:
-                            print("Sending message to channel.")
                             await channel.send(f"{message.author}: {message.content}",
                                                allowed_mentions=discord.AllowedMentions.none())
                     elif guild_id_2 == message.guild.id and channel_id_2 == message.channel.id:
                         guild = self.bot.get_guild(guild_id_1)
                         channel = guild.get_channel(channel_id_1) if guild else None
-                        print(f"Found guild: {guild}, channel: {channel}")
                         if channel and not message.author == self.bot.user:
-                            print("Sending message to channel.")
                             await channel.send(f"{message.author}: {message.content}",
                                                allowed_mentions=discord.AllowedMentions.none())
 
