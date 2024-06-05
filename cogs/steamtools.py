@@ -1,6 +1,7 @@
 import json
 import os
 import urllib.parse
+from datetime import datetime
 
 import aiohttp
 import aiosqlite
@@ -19,11 +20,10 @@ access_token = "eyAidHlwIjogIkpXVCIsICJhbGciOiAiRWREU0EiIH0.eyAiaXNzIjogInI6MEVD
 steam_id_test = "76561197964559112"
 
 # Steam API Endpoints
-# TODO - Add more endpoints for more data
+get_player_summaries = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?"
 get_player_bans = "https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?"
-get_player_profile = "https://api.steampowered.com/ICSGOPlayers_730/GetPlayerProfile/v1/?"
-get_player_profilecoin = "https://partner.steam-api.com/ICSGOPlayers_730/GetPlayerProfileCoin/v1/?"
-convert_to_steamid64 = "http://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?"
+get_friends_list = "https://api.steampowered.com/ISteamUser/GetFriendList/v1/?"
+convert_to_steamid64 = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?"
 
 # FACEIT Stuff
 player_search_url = "https://open.faceit.com/data/v4/players"
@@ -57,7 +57,10 @@ class SteamTools(commands.Cog, name="steamtools"):
     )
     async def steamid(self, context: Context, steamid: str) -> None:
         try:
-            steamid64 = SteamID.from_url(steamid).as_64
+            if len(steamid) == 17:
+                steamid64 = steamid
+            else:
+                steamid64 = SteamID.from_url(steamid).as_64
         except ValueError:
             embed = discord.Embed(
                 title="Invalid Steam ID",
@@ -67,62 +70,126 @@ class SteamTools(commands.Cog, name="steamtools"):
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
             return
+
         async with aiohttp.ClientSession() as session:
-            async with session.get(f'https://api.snaz.in/v2/steam/user-profile/{steamid64}') as r:
-                if r.status == 200:
-                    data = await r.json()
+            async with session.get(
+                    f"{get_player_summaries}key={steam_api_key}&access_token={access_token}&steamids={steamid64}") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
                     if data is None:
                         return
                     embed = discord.Embed(
                         color=discord.Color.blue()
                     )
                     if data is not None:
-                        embed.title = data.get('username', 'Unknown')
-                        embed.url = f"https://steamcommunity.com/id/{data.get('custom_url', 'Unknown')}"
-                        summary = data.get('summary', {})
-                        if summary is not None:
-                            embed.description = summary.get('text', 'Unknown')
-                        embed.set_thumbnail(url=data.get('avatar', 'Unknown'))
-                        embed.set_image(url=data.get('background_url', 'Unknown'))
-                        bans = data.get('bans', {})
-                        if bans is not None:
-                            embed.add_field(name="Bans",
-                                            value=f"Community: {bans.get('community', 'Unknown')}\nGame: {bans.get('game', 'Unknown')}\nTrade: {bans.get('trade', 'Unknown')}\nVAC: {bans.get('vac', 'Unknown')}",
-                                            inline=False)
-                        level = data.get('level', {})
-                        if level is not None:
-                            embed.add_field(name="Level", value=level.get('formatted', 'Unknown'), inline=True)
-                        badge = data.get('badge', {})
-                        if badge is not None:
-                            embed.add_field(name="Member Since", value=badge.get('meta', 'Unknown'), inline=True)
-                        counts = data.get('counts', {})
-                        if counts is not None:
-                            friends = counts.get('friends', {})
-                            if friends is not None:
-                                embed.add_field(name="Friends", value=friends.get('formatted', 'None/Private'),
-                                                inline=True)
-                            games = counts.get('games', {})
-                            if games is not None:
-                                embed.add_field(name="Games", value=games.get('formatted', 'Unknown'), inline=True)
-                            badges = counts.get('badges', {})
-                            if badges is not None:
-                                embed.add_field(name="Badges", value=badges.get('formatted', 'Unknown'), inline=True)
-                            artwork = counts.get('artwork', {})
-                            if artwork is not None:
-                                embed.add_field(name="Artwork", value=artwork.get('formatted', 'Unknown'), inline=True)
-                            screenshots = counts.get('screenshots', {})
-                            if screenshots is not None:
-                                embed.add_field(name="Screenshots", value=screenshots.get('formatted', 'Unknown'),
-                                                inline=True)
-                            workshop_files = counts.get('workshop_files', {})
-                            if workshop_files is not None:
-                                embed.add_field(name="Workshop Files",
-                                                value=workshop_files.get('formatted', 'None/Private'), inline=True)
-                        primary_group = data.get('primary_group', {})
-                        if primary_group is not None:
-                            embed.add_field(name="Primary Group", value=primary_group.get('name', 'Unknown'),
-                                            inline=True)
-                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                        community_visibility_state_map = {
+                            1: "Private",
+                            2: "Friends Only",
+                            3: "Public"
+                        }
+
+                        profile_state_map = {
+                            0: "Not setup",
+                            1: "Setup"
+                        }
+
+                        persona_state_map = {
+                            0: "Offline",
+                            1: "Online",
+                            2: "Busy",
+                            3: "Away",
+                            4: "Snooze",
+                            5: "Looking to trade",
+                            6: "Looking to play"
+                        }
+
+                        player_data = data['response']['players'][0]
+                        embed.title = f"🎮 {player_data.get('personaname', 'Unknown')}"
+                        embed.url = player_data.get('profileurl', 'Unknown')
+                        embed.set_thumbnail(url=player_data.get('avatarfull', 'Unknown'))
+                        embed.add_field(name="🆔 Steam ID", value=player_data.get('steamid', 'Unknown'), inline=False)
+                        embed.add_field(name="👁️ Community Visibility",
+                                        value=community_visibility_state_map.get(
+                                            player_data.get('communityvisibilitystate'), 'Unknown'), inline=True)
+                        embed.add_field(name="🎭 Persona State",
+                                        value=persona_state_map.get(player_data.get('personastate'), 'Unknown'),
+                                        inline=True)
+                        embed.add_field(name="📝 Profile State",
+                                        value=profile_state_map.get(player_data.get('profilestate'), 'Unknown'),
+                                        inline=True)
+                        embed.add_field(name="", value="\u200b", inline=False)
+                        embed.add_field(name="💬 Comment Permission",
+                                        value="Allowed" if player_data.get('commentpermission') else "Not Allowed",
+                                        inline=False)
+                        embed.add_field(name="", value="\u200b", inline=False)
+
+                        try:
+                            async with aiohttp.ClientSession() as session:
+                                async with session.get(
+                                        f"{get_player_bans}key={steam_api_key}&access_token={access_token}&steamids={steamid64}") as resp:
+                                    if resp.status == 200:
+                                        ban_data = await resp.json()
+                                        if ban_data is not None:
+                                            ban_info = ban_data['players'][0]
+                                            embed.add_field(name="Community Banned",
+                                                            value="Yes" if ban_info.get('CommunityBanned',
+                                                                                        False) else "No", inline=True)
+                                            embed.add_field(name="VAC Banned",
+                                                            value="Yes" if ban_info.get('VACBanned', False) else "No",
+                                                            inline=True)
+                                            embed.add_field(name="Number of VAC Bans",
+                                                            value=ban_info.get('NumberOfVACBans', 'Unknown'),
+                                                            inline=True)
+                                            embed.add_field(name="Days Since Last Ban",
+                                                            value=ban_info.get('DaysSinceLastBan', 'Unknown'),
+                                                            inline=True)
+                                            embed.add_field(name="Number of Game Bans",
+                                                            value=ban_info.get('NumberOfGameBans', 'Unknown'),
+                                                            inline=True)
+                                            embed.add_field(name="Economy Ban",
+                                                            value=ban_info.get('EconomyBan', 'Unknown'), inline=True)
+                        except Exception as e:
+                            embed = discord.Embed(
+                                title="❌ Error",
+                                description=f"An error occurred: {e}",
+                                color=discord.Color.red()
+                            )
+                            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                            await context.send(embed=embed)
+
+                        try:
+                            async with aiohttp.ClientSession() as session:
+                                async with session.get(f"{player_search_url}/{steamid64}") as resp:
+                                    if resp.status == 200:
+                                        faceit_data = await resp.json()
+                                        if 'errors' in faceit_data:
+                                            embed.add_field(name="❌ FACEIT:",
+                                                            value="No FACEIT information available.", inline=False)
+                                        else:
+                                            embed.add_field(name="✔️ FACEIT:",
+                                                            value=f"https://www.faceit.com/en/players/{faceit_data['nickname']}",
+                                                            inline=True)
+                                    else:
+                                        embed.add_field(name="❌ FACEIT:",
+                                                        value="No FACEIT information available.", inline=False)
+                        except Exception as e:
+                            embed = discord.Embed(
+                                title="❌ Error",
+                                description=f"An error occurred: {e}",
+                                color=discord.Color.red()
+                            )
+                            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                            await context.send(embed=embed)
+
+                    time_created = player_data.get('timecreated')
+                    if time_created is not None:
+                        time_created = datetime.utcfromtimestamp(time_created).strftime('%Y-%m-%d %H:%M:%S')
+                    else:
+                        time_created = 'Unknown'
+                    embed.add_field(name="", value="\u200b", inline=False)
+                    embed.add_field(name="⏰ Time Created", value=time_created, inline=False)
+                    embed.set_footer(text=f"🔍 Requested by {context.author.name}", icon_url=context.author.avatar)
+
                     await context.send(embed=embed)
 
     @commands.hybrid_command(
@@ -209,7 +276,10 @@ class SteamTools(commands.Cog, name="steamtools"):
     )
     async def track_steamid(self, context: Context, steamid: str) -> None:
         try:
-            steamid64 = SteamID.from_url(steamid).as_64
+            if len(steamid) == 17 and steamid.isdigit():
+                steamid64 = steamid
+            else:
+                steamid64 = SteamID.from_url(steamid).as_64
         except ValueError:
             embed = discord.Embed(
                 title="Invalid Steam ID",
@@ -355,7 +425,10 @@ class SteamTools(commands.Cog, name="steamtools"):
     )
     async def untrack_steamid(self, context: Context, steamid: str) -> None:
         try:
-            steamid64 = SteamID.from_url(steamid).as_64
+            if len(steamid) == 17 and steamid.isdigit():
+                steamid64 = steamid
+            else:
+                steamid64 = SteamID.from_url(steamid).as_64
         except ValueError:
             embed = discord.Embed(
                 title="Invalid Steam ID",
@@ -604,7 +677,10 @@ class SteamTools(commands.Cog, name="steamtools"):
     )
     async def faceit(self, context: Context, steamid: str) -> None:
         try:
-            steamid64 = SteamID.from_url(steamid).as_64
+            if len(steamid) == 17 and steamid.isdigit():
+                steamid64 = steamid
+            else:
+                steamid64 = SteamID.from_url(steamid).as_64
         except ValueError:
             embed = discord.Embed(
                 title="Invalid Steam ID",

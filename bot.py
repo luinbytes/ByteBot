@@ -254,7 +254,6 @@ class DiscordBot(commands.Bot):
                     if prefix is None:
                         await self.guild_prefix(guild_id, '>')
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
-                        # self.logger.info(f"Prefix for guild {guild.id} is {prefix}")
 
         await self.connect_nodes()
 

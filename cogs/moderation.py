@@ -840,17 +840,17 @@ class Moderation(commands.Cog, name="moderation"):
     @commands.hybrid_command(
         name="chatsync",
         description="Syncs the chat of two channels on 2 different servers.",
-        usage="chatsync <channelID-1> <channelID-2>",
+        usage="chatsync <channelID-2>",
         aliases=["syncchat", "chatlink"]
     )
     @app_commands.describe(
         channel2="The ID of the second channel."
     )
     @commands.has_permissions(administrator=True)
-    async def chatsync(self, context: Context, channel2: int) -> None:
+    async def chatsync(self, context: Context, channel2: str) -> None:
         # Fetch the channels from their IDs
         channel1 = context.channel
-        channel2 = await self.bot.fetch_channel(channel2)
+        channel2 = await self.bot.fetch_channel(int(channel2))
 
         # Get the guilds from the channels
         guild1 = channel1.guild
@@ -880,6 +880,13 @@ class Moderation(commands.Cog, name="moderation"):
                     color=0xBEBEFE
                 )
                 await context.send(embed=embed)
+                # Send a message to the linked channel saying chatsync has worked
+                embed = discord.Embed(
+                    title="✅ Chat Sync Created",
+                    description=f"The chat between {channel1.mention} and {channel2.mention} has been synced.",
+                    color=0xBEBEFE
+                )
+                await channel2.send(embed=embed)
 
     @commands.hybrid_command(
         name="unsyncchat",
@@ -891,10 +898,10 @@ class Moderation(commands.Cog, name="moderation"):
         channel2="The ID of the second channel."
     )
     @commands.has_permissions(administrator=True)
-    async def unsyncchat(self, context: Context, channel2: int) -> None:
+    async def unsyncchat(self, context: Context, channel2: str) -> None:
         # Fetch the channels from their IDs
         channel1 = context.channel
-        channel2 = await self.bot.fetch_channel(channel2)
+        channel2 = await self.bot.fetch_channel(int(channel2))
 
         # Get the guilds from the channels
         guild1 = channel1.guild
@@ -908,7 +915,7 @@ class Moderation(commands.Cog, name="moderation"):
             result = await c.fetchone()
             if result:
                 await c.execute(
-                    "DELETE FROM ChatSync WHERE (guild_id_1 = ? AND channel_id_1 = ? AND guild_id_2 = ? AND channel_id_2 = ?) OR (guild_id_1 = ? AND channel_id_1 = ? AND guild_id_2 = ? AND channel_id_2 = ?)",
+                    "DELETE FROM ChatSync WHERE (channel_id_1 = ? AND guild_id_1 = ? AND channel_id_2 = ? AND guild_id_2 = ?) OR (channel_id_1 = ? AND guild_id_1 = ? AND channel_id_2 = ? AND guild_id_2 = ?)",
                     (channel1.id, guild1.id, channel2.id, guild2.id, channel2.id, guild2.id, channel1.id, guild1.id))
                 await conn.commit()
                 embed = discord.Embed(
@@ -969,33 +976,43 @@ class Moderation(commands.Cog, name="moderation"):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        print(f"Received message from {message.author}")
         if message.author.bot:
+            print("Message author is a bot, returning.")
             return
 
         prefix = await guild_prefix(self, message.guild.id)
         if message.content.startswith(prefix):
+            print("Message starts with prefix, returning.")
             return
 
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
+            print("Connected to the database.")
             await c.execute(
                 "SELECT * FROM ChatSync WHERE (guild_id_1 = ? AND channel_id_1 = ?) OR (guild_id_2 = ? AND channel_id_2 = ?)",
                 (message.guild.id, message.channel.id, message.guild.id, message.channel.id))
             result = await c.fetchall()
+            print(f"Executed SQL query, result: {result}")
             if result:
                 for row in result:
                     channel_id_1, guild_id_1, channel_id_2, guild_id_2 = row
+                    print(f"Processing row: {row}")
                     if guild_id_1 == message.guild.id and channel_id_1 == message.channel.id:
                         guild = self.bot.get_guild(guild_id_2)
                         channel = guild.get_channel(channel_id_2) if guild else None
+                        print(f"Found guild: {guild}, channel: {channel}")
                         if channel and not message.author == self.bot.user:
-                            await channel.send(f"{message.author.mention}: {message.content}",
+                            print("Sending message to channel.")
+                            await channel.send(f"{message.author}: {message.content}",
                                                allowed_mentions=discord.AllowedMentions.none())
                     elif guild_id_2 == message.guild.id and channel_id_2 == message.channel.id:
                         guild = self.bot.get_guild(guild_id_1)
                         channel = guild.get_channel(channel_id_1) if guild else None
+                        print(f"Found guild: {guild}, channel: {channel}")
                         if channel and not message.author == self.bot.user:
-                            await channel.send(f"{message.author.mention}: {message.content}",
+                            print("Sending message to channel.")
+                            await channel.send(f"{message.author}: {message.content}",
                                                allowed_mentions=discord.AllowedMentions.none())
 
 
