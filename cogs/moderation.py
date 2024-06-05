@@ -483,14 +483,6 @@ class Moderation(commands.Cog, name="moderation"):
         )
         await context.send(embed=embed)
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member):
-        autorole_id = await guild_autoroles(self, member.guild.id)
-        if autorole_id:
-            role = member.guild.get_role(autorole_id)
-            if role:
-                await member.add_roles(role)
-
     @commands.hybrid_command(
         name="starboard",
         description="Sets the starboard channel for the server.",
@@ -572,32 +564,25 @@ class Moderation(commands.Cog, name="moderation"):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        # print("Reaction added")
 
         # Get starboard channels and minimum reactions from the database
         result = guild_starboard_channels(self, payload.guild_id)
         if result:
-            # print(result)
             starboard_guild_id, starboard_channel_id, min_reactions = result[0]
-            # print(f"Starboard channel ID: {starboard_channel_id}, Minimum reactions: {min_reactions}")
 
             if payload.emoji.name == "⭐":
-                # print("Star reaction detected")
 
                 channel = self.bot.get_channel(payload.channel_id)
                 message = await channel.fetch_message(payload.message_id)
                 reaction = [react for react in message.reactions if str(react.emoji) == "⭐"][0]
 
                 if reaction and reaction.count >= min_reactions:
-                    # print("Reaction count is greater than or equal to minimum reactions")
 
                     if starboard_channel_id:
-                        # print("Starboard channel ID exists")
 
                         starboard_channel = reaction.message.guild.get_channel(int(starboard_channel_id))
 
                         if starboard_channel:
-                            # print("Starboard channel exists")
 
                             # Check if the message is already in the starboard
                             starboard_messages = []
@@ -606,10 +591,7 @@ class Moderation(commands.Cog, name="moderation"):
 
                             if any(f"[Click here]({reaction.message.jump_url})" in embed.fields[0].value for message in
                                    starboard_messages for embed in message.embeds if embed.fields):
-                                # print("Message is already in the starboard")
                                 return
-
-                            # print("Creating embed")
 
                             embed = discord.Embed(
                                 title="⭐ Pinned!",
@@ -627,32 +609,26 @@ class Moderation(commands.Cog, name="moderation"):
                             url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
                             urls = re.findall(url_pattern, reaction.message.content)
                             if urls:
-                                # print("URLs found in message content")
 
                                 for url in urls:
                                     if url.endswith(('.png', '.jpg', '.gif')):
-                                        # print("Image URL found")
                                         embed.set_image(url=url)
                                         break
 
                             if reaction.message.attachments:
-                                # print("Message has attachments")
                                 embed.set_image(url=reaction.message.attachments[0].url)
 
-                            # print("Sending embed to starboard channel")
                             await starboard_channel.send(embed=embed)
 
                             message_id = payload.message_id
                             channel_id = payload.channel_id
                             guild_id = payload.guild_id
 
-                            # Fetch the message that was reacted to
                             channel = self.bot.get_channel(channel_id)
                             message = await channel.fetch_message(message_id)
 
-                            # Award coins to the user who sent the message
                             user_id = message.author.id
-                            # print("Awarding coins to user")
+
                             await self.award(user_id, coins=1000)
         else:
             return
@@ -1005,26 +981,34 @@ class Moderation(commands.Cog, name="moderation"):
                             await channel.send(f"{message.author}: {message.content}",
                                                allowed_mentions=discord.AllowedMentions.none())
 
+    @tasks.loop(minutes=1)
+    async def check_mutes(self):
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            await c.execute("SELECT * FROM GuildMutedUsers")
+            result = await c.fetchall()
+            for row in result:
+                guild_id, user_id, end_time = row
+                if datetime.now().timestamp() >= end_time:
+                    guild = self.bot.get_guild(guild_id)
+                    user = guild.get_member(user_id)
+                    if user:
+                        await c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (guild_id,))
+                        role_id = await c.fetchone()
+                        role = guild.get_role(role_id)
+                        if role:
+                            await user.remove_roles(role)
+                    await c.execute("DELETE FROM GuildMutedUsers WHERE guild_id = ? AND user_id = ?",
+                                    (guild_id, user_id))
+                    await conn.commit()
 
-@tasks.loop(minutes=1)
-async def check_mutes(self):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        c = await conn.cursor()
-        await c.execute("SELECT * FROM GuildMutedUsers")
-        result = await c.fetchall()
-        for row in result:
-            guild_id, user_id, end_time = row
-            if datetime.now().timestamp() >= end_time:
-                guild = self.bot.get_guild(guild_id)
-                user = guild.get_member(user_id)
-                if user:
-                    await c.execute("SELECT role_id FROM GuildMuteRole WHERE guild_id = ?", (guild_id,))
-                    role_id = await c.fetchone()
-                    role = guild.get_role(role_id)
-                    if role:
-                        await user.remove_roles(role)
-                await c.execute("DELETE FROM GuildMutedUsers WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-                await conn.commit()
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        autorole_id = await guild_autoroles(self, member.guild.id)
+        if autorole_id:
+            role = member.guild.get_role(autorole_id)
+            if role:
+                await member.add_roles(role)
 
 
 async def setup(bot) -> None:

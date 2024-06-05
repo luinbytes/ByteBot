@@ -2,8 +2,8 @@ import random
 
 import aiohttp
 import discord
-from discord.ext import commands
 from discord import app_commands
+from discord.ext import commands
 from discord.ext.commands import Context
 
 
@@ -14,17 +14,18 @@ class Choice(discord.ui.View):
 
     @discord.ui.button(label="Heads", style=discord.ButtonStyle.blurple)
     async def confirm(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+            self, button: discord.ui.Button, interaction: discord.Interaction
     ) -> None:
         self.value = "heads"
         self.stop()
 
     @discord.ui.button(label="Tails", style=discord.ButtonStyle.blurple)
     async def cancel(
-        self, button: discord.ui.Button, interaction: discord.Interaction
+            self, button: discord.ui.Button, interaction: discord.Interaction
     ) -> None:
         self.value = "tails"
         self.stop()
+
 
 class RockPaperScissors(discord.ui.Select):
     def __init__(self) -> None:
@@ -134,9 +135,9 @@ class Fun(commands.Cog, name="fun"):
         await context.send(embed=embed)
 
     @commands.hybrid_command(
-            name="randomfact", 
-            description="Get a random fact.",
-            usage="randomfact"
+        name="randomfact",
+        description="Get a random fact.",
+        usage="randomfact"
     )
     async def randomfact(self, context: Context) -> None:
         """
@@ -147,7 +148,7 @@ class Fun(commands.Cog, name="fun"):
         # This will prevent your bot from stopping everything when doing a web request - see: https://discordpy.readthedocs.io/en/stable/faq.html#how-do-i-make-a-web-request
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                "https://uselessfacts.jsph.pl/random.json?language=en"
+                    "https://uselessfacts.jsph.pl/random.json?language=en"
             ) as request:
                 if request.status == 200:
                     data = await request.json()
@@ -161,8 +162,8 @@ class Fun(commands.Cog, name="fun"):
                 await context.send(embed=embed)
 
     @commands.hybrid_command(
-        name="coinflip", 
-        description="Make a coin flip, but give your bet before.",
+        name="coinflip",
+        description="Run a coin flip.",
         usage="coinflip",
         aliases=["coin", "flip"]
     )
@@ -179,18 +180,20 @@ class Fun(commands.Cog, name="fun"):
         result = random.choice(["heads", "tails"])
         if buttons.value == result:
             embed = discord.Embed(
-                description=f"Correct! You guessed `{buttons.value}` and I flipped the coin to `{result}`.",
-                color=0xBEBEFE,
+                title="Congratulations!",
+                description=f"You guessed `{buttons.value}` and I flipped the coin to `{result}`!",
+                color=0x57F287,
             )
         else:
             embed = discord.Embed(
-                description=f"Woops! You guessed `{buttons.value}` and I flipped the coin to `{result}`, better luck next time!",
+                title="Better luck next time!",
+                description=f"You guessed `{buttons.value}` but I flipped the coin to `{result}`!",
                 color=0xE02B2B,
             )
         await message.edit(embed=embed, view=None, content=None)
 
     @commands.hybrid_command(
-        name="rps", 
+        name="rps",
         description="Play the rock paper scissors game against the bot.",
         usage="rps",
         aliases=["rockpaperscissors"]
@@ -205,7 +208,7 @@ class Fun(commands.Cog, name="fun"):
         await context.send("Please make your choice", view=view)
 
     @commands.hybrid_command(
-        name="catslap", 
+        name="catslap",
         description="Cat-Slap someone.",
         usage="catslap <@user>",
         aliases=["slapcat", "catsmack"]
@@ -253,7 +256,7 @@ class Fun(commands.Cog, name="fun"):
     async def randommeme(self, context: Context) -> None:
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                "https://meme-api.com/gimme/"
+                    "https://meme-api.com/gimme/"
             ) as request:
                 # print(request.status)
                 if request.status == 200:
@@ -262,10 +265,10 @@ class Fun(commands.Cog, name="fun"):
                     author = data.get("author", "No author available")
                     url = data.get("url", "")
 
-                    embed = discord.Embed(title="Random Meme", \
-                        color=0xD75BF4,
-                        description=f"[View Image]({url})"
-                    )
+                    embed = discord.Embed(title="Random Meme",
+                                          color=0xD75BF4,
+                                          description=f"[View Image]({url})"
+                                          )
                     embed.set_image(url=url)
                     embed.add_field(name="Title", value=title, inline=False)
                     embed.add_field(name="Author", value=author, inline=False)
@@ -307,7 +310,7 @@ class Fun(commands.Cog, name="fun"):
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                "https://api.kanye.rest/"
+                    "https://api.kanye.rest/"
             ) as request:
                 if request.status == 200:
                     data = await request.json()
@@ -341,7 +344,7 @@ class Fun(commands.Cog, name="fun"):
     async def chuck_norris(self, context: Context) -> None:
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                "https://api.chucknorris.io/jokes/random"
+                    "https://api.chucknorris.io/jokes/random"
             ) as request:
                 if request.status == 200:
                     data = await request.json()
@@ -380,7 +383,7 @@ class Fun(commands.Cog, name="fun"):
         ]
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                "https://api.whatdoestrumpthink.com/api/v1/quotes/random"
+                    "https://api.whatdoestrumpthink.com/api/v1/quotes/random"
             ) as request:
                 if request.status == 200:
                     data = await request.json()
@@ -442,18 +445,25 @@ class Fun(commands.Cog, name="fun"):
             "eevee": ["transforms into Eevee at", "transforms into Eevee"],
             "neko": ["transforms into Neko at", "transforms into Neko"]
         }
-    
+
         if action not in action_phrases.keys():
-            return await context.send("Invalid action! Please use `listactions` to see all available actions.")
-    
+            embed = discord.Embed(
+                title="Error!",
+                description="Invalid action, please use `listactions` to see the available actions",
+                color=0xE02B2B
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+            return
+
         if user:
             dynamic_description = f"{context.author.mention} {action_phrases[action][0]} {user.mention}!"
         else:
             dynamic_description = f"{context.author.mention} {action_phrases[action][1]}!"
-    
+
         base_url = "https://purrbot.site/api"
         endpoint = f"/img/sfw/{action}/gif"
-    
+
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url + endpoint) as response:
                 if response.status == 200:
@@ -483,7 +493,8 @@ class Fun(commands.Cog, name="fun"):
         :param context: The hybrid command context.
         """
         actions = [
-            "angry", "bite", "blush", "comfy", "cry", "cuddle", "dance", "fluff", "hug", "kiss", "lay", "lick", "pat", "poke", "pout", "slap", "smile", "tail", "tickle", "eevee", "neko"
+            "angry", "bite", "blush", "comfy", "cry", "cuddle", "dance", "fluff", "hug", "kiss", "lay", "lick", "pat",
+            "poke", "pout", "slap", "smile", "tail", "tickle", "eevee", "neko"
         ]
         embed = discord.Embed(
             title="Available Actions",
@@ -510,7 +521,7 @@ class Fun(commands.Cog, name="fun"):
         """
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                "https://evilinsult.com/generate_insult.php?lang=en&type=json"
+                    "https://evilinsult.com/generate_insult.php?lang=en&type=json"
             ) as request:
                 if request.status == 200:
                     data = await request.json()
@@ -526,6 +537,7 @@ class Fun(commands.Cog, name="fun"):
                         color=0xE02B2B,
                     )
                     await context.send(embed=embed)
+
 
 async def setup(bot) -> None:
     await bot.add_cog(Fun(bot))
