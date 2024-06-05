@@ -942,8 +942,8 @@ class Moderation(commands.Cog, name="moderation"):
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
             await c.execute(
-                "SELECT * FROM ChatSync WHERE guild_id_1 = ? OR guild_id_2 = ?",
-                (context.guild.id, context.guild.id))
+                "SELECT * FROM ChatSync WHERE channel_id_1 = ? OR channel_id_2 = ?",
+                (context.channel.id, context.channel.id))
             result = await c.fetchall()
             if result:
                 embed = discord.Embed(
@@ -953,13 +953,13 @@ class Moderation(commands.Cog, name="moderation"):
                 )
                 for row in result:
                     channel_id_1, guild_id_1, channel_id_2, guild_id_2 = row
-                    if guild_id_1 == context.guild.id:
+                    if channel_id_1 == context.channel.id:
                         guild = self.bot.get_guild(guild_id_2)
                         channel = guild.get_channel(channel_id_2) if guild else None
                         if channel:
                             embed.add_field(name=f"{channel.guild.name} - #{channel.name}", value=f"ID: {channel.id}",
                                             inline=False)
-                    elif guild_id_2 == context.guild.id:
+                    elif channel_id_2 == context.channel.id:
                         guild = self.bot.get_guild(guild_id_1)
                         channel = guild.get_channel(channel_id_1) if guild else None
                         if channel:
