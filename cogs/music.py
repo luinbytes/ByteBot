@@ -225,7 +225,7 @@ class Music(commands.Cog, name="music"):
         description="Pause the music.",
         usage="pause"
     )
-    async def pause(self, context: commands.Context) -> None:
+    async def pause(self, context: commands.Context) -> Message:
         player: wavelink.Player = context.guild.voice_client
         if not context.author.voice:
             embed = discord.Embed(
@@ -251,6 +251,7 @@ class Music(commands.Cog, name="music"):
                 description="I do not have permission to connect to your voice channel.",
                 color=discord.Colour.red()
             )
+
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             return await context.send(embed=embed)
 
