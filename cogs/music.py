@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import timedelta
 from typing import cast
@@ -56,7 +55,6 @@ class Music(commands.Cog, name="music"):
             pass
         else:
             self.channel = None
-            await asyncio.sleep(60)
             await player.disconnect()
 
     @commands.hybrid_command(
