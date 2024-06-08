@@ -68,6 +68,13 @@ class Music(commands.Cog, name="music"):
     )
     async def play(self, context, *, song: str) -> None:
         try:
+            embed = discord.Embed(
+                title="Searching",
+                description="Searching for the song...",
+                color=discord.Colour.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
             print("Play function called with song:", song)
 
             if not context.author.voice:
