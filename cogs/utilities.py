@@ -3,6 +3,7 @@ import sqlite3
 from sys import platform
 
 import aiohttp
+import aiosqlite
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -13,26 +14,25 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 
-def guild_prefix(db, guild_id, prefix=None):
-    db_conn = sqlite3.connect(DB_PATH)
-    db = db_conn.cursor()
-    if prefix is not None:
-        # Write to the table
-        try:
-            db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-        except sqlite3.IntegrityError:
-            db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
-        db_conn.commit()
-    else:
-        # Read from the table
-        cursor = db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    db.close()
+async def guild_prefix(db, guild_id, prefix=None):
+    async with aiosqlite.connect(DB_PATH) as db_conn:
+        db = await db_conn.cursor()
+        if prefix is not None:
+            # Write to the table
+            try:
+                await db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
+            except aiosqlite.IntegrityError:
+                await db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+            await db_conn.commit()
+        else:
+            # Read from the table
+            cursor = await db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+            row = await cursor.fetchone()
+            return row[0] if row else None
 
 
 class Utilities(commands.Cog, name="utilities"):
-    def __init__(self, bot) -> None:
+    def __init__(self, bot, value) -> None:
         self.bot = bot
         self.context_menu_user = app_commands.ContextMenu(
             name="Grab ID", callback=self.grab_id
