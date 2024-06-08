@@ -67,7 +67,10 @@ class Music(commands.Cog, name="music"):
         song="The song to search for and play."
     )
     async def play(self, context, *, song: str) -> None:
+        print("Play function called with song:", song)
+
         if not context.author.voice:
+            print("User is not connected to a voice channel.")
             embed = discord.Embed(
                 title="Error",
                 description="You are not connected to a voice channel.",
@@ -77,6 +80,7 @@ class Music(commands.Cog, name="music"):
             return await context.send(embed=embed)
 
         if not context.author.voice.channel:
+            print("User is not connected to a voice channel.")
             embed = discord.Embed(
                 title="Error",
                 description="You are not connected to a voice channel.",
@@ -86,6 +90,7 @@ class Music(commands.Cog, name="music"):
             return await context.send(embed=embed)
 
         if not context.author.voice.channel.permissions_for(context.guild.me).connect:
+            print("Bot does not have permission to connect to the voice channel.")
             embed = discord.Embed(
                 title="Error",
                 description="I do not have permission to connect to your voice channel.",
@@ -95,6 +100,7 @@ class Music(commands.Cog, name="music"):
             return await context.send(embed=embed)
 
         if not context.author.voice.channel.permissions_for(context.guild.me).speak:
+            print("Bot does not have permission to speak in the voice channel.")
             embed = discord.Embed(
                 title="Error",
                 description="I do not have permission to speak in your voice channel.",
@@ -105,10 +111,13 @@ class Music(commands.Cog, name="music"):
 
         self.channel = context.channel
         destination = context.author.voice.channel
+        print("Destination voice channel:", destination)
 
         try:
+            print("Searching for song:", song)
             tracks: wavelink.Search = await wavelink.Playable.search(song)
             if not tracks:
+                print("No tracks found.")
                 embed = discord.Embed(
                     title="Error",
                     description="No tracks found.",
@@ -117,6 +126,7 @@ class Music(commands.Cog, name="music"):
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 return await context.send(embed=embed)
         except LavalinkLoadException:
+            print("Error occurred while loading the track.")
             embed = discord.Embed(
                 title="Error",
                 description="An error occurred while loading the track.",
@@ -126,18 +136,22 @@ class Music(commands.Cog, name="music"):
             return await context.send(embed=embed)
 
         if not context.guild.voice_client:
+            print("Bot is not connected to a voice client. Connecting...")
             await destination.connect(cls=wavelink.Player, self_deaf=True)
 
         player: wavelink.Player = cast(
             wavelink.Player,
             context.guild.voice_client
         )
+        print("Player:", player)
 
         player.autoplay = wavelink.AutoPlayMode.partial
         track: wavelink.Playable = tracks[0]
         artist_name = track.artist
+        print("Track to play:", track.title, "by", artist_name)
 
         await player.queue.put_wait(track)
+        print("Track added to queue.")
 
         embed = discord.Embed(
             title="Queued",
@@ -150,8 +164,10 @@ class Music(commands.Cog, name="music"):
         embed.add_field(name="Queue", value=f"{len(player.queue)} songs", inline=True)
         embed.set_footer(text=f"Source: {track.source.capitalize()}", icon_url=track.artwork)
         await context.send(embed=embed)
+        print("Sent embed to user.")
 
         if not player.playing:
+            print("Player is not playing. Starting playback.")
             await player.play(player.queue.get(), volume=self.volume)
 
     @commands.hybrid_command(
