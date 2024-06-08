@@ -32,7 +32,7 @@ async def guild_prefix(db, guild_id, prefix=None):
 
 
 class Utilities(commands.Cog, name="utilities"):
-    def __init__(self, bot, value) -> None:
+    def __init__(self, bot) -> None:
         self.bot = bot
         self.context_menu_user = app_commands.ContextMenu(
             name="Grab ID", callback=self.grab_id
