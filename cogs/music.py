@@ -67,108 +67,111 @@ class Music(commands.Cog, name="music"):
         song="The song to search for and play."
     )
     async def play(self, context, *, song: str) -> None:
-        print("Playy function called with song:", song)
-
-        if not context.author.voice:
-            print("User is not connected to a voice channel.")
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel:
-            print("User is not connected to a voice channel.")
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).connect:
-            print("Bot does not have permission to connect to the voice channel.")
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to connect to your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).speak:
-            print("Bot does not have permission to speak in the voice channel.")
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to speak in your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        self.channel = context.channel
-        destination = context.author.voice.channel
-        print("Destination voice channel:", destination)
-
         try:
-            print("Searching for song:", song)
-            tracks: wavelink.Search = await wavelink.Playable.search(song)
-            if not tracks:
-                print("No tracks found.")
+            print("Play function called with song:", song)
+
+            if not context.author.voice:
+                print("User is not connected to a voice channel.")
                 embed = discord.Embed(
                     title="Error",
-                    description="No tracks found.",
+                    description="You are not connected to a voice channel.",
                     color=discord.Colour.red()
                 )
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 return await context.send(embed=embed)
-        except LavalinkLoadException:
-            print("Error occurred while loading the track.")
-            embed = discord.Embed(
-                title="Error",
-                description="An error occurred while loading the track.",
-                color=discord.Colour.red()
+
+            if not context.author.voice.channel:
+                print("User is not connected to a voice channel.")
+                embed = discord.Embed(
+                    title="Error",
+                    description="You are not connected to a voice channel.",
+                    color=discord.Colour.red()
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                return await context.send(embed=embed)
+
+            if not context.author.voice.channel.permissions_for(context.guild.me).connect:
+                print("Bot does not have permission to connect to the voice channel.")
+                embed = discord.Embed(
+                    title="Error",
+                    description="I do not have permission to connect to your voice channel.",
+                    color=discord.Colour.red()
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                return await context.send(embed=embed)
+
+            if not context.author.voice.channel.permissions_for(context.guild.me).speak:
+                print("Bot does not have permission to speak in the voice channel.")
+                embed = discord.Embed(
+                    title="Error",
+                    description="I do not have permission to speak in your voice channel.",
+                    color=discord.Colour.red()
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                return await context.send(embed=embed)
+
+            self.channel = context.channel
+            destination = context.author.voice.channel
+            print("Destination voice channel:", destination)
+
+            try:
+                print("Searching for song:", song)
+                tracks: wavelink.Search = await wavelink.Playable.search(song)
+                if not tracks:
+                    print("No tracks found.")
+                    embed = discord.Embed(
+                        title="Error",
+                        description="No tracks found.",
+                        color=discord.Colour.red()
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    return await context.send(embed=embed)
+            except LavalinkLoadException:
+                print("Error occurred while loading the track.")
+                embed = discord.Embed(
+                    title="Error",
+                    description="An error occurred while loading the track.",
+                    color=discord.Colour.red()
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                return await context.send(embed=embed)
+
+            if not context.guild.voice_client:
+                print("Bot is not connected to a voice client. Connecting...")
+                await destination.connect(cls=wavelink.Player, self_deaf=True)
+
+            player: wavelink.Player = cast(
+                wavelink.Player,
+                context.guild.voice_client
             )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
+            print("Player:", player)
 
-        if not context.guild.voice_client:
-            print("Bot is not connected to a voice client. Connecting...")
-            await destination.connect(cls=wavelink.Player, self_deaf=True)
+            player.autoplay = wavelink.AutoPlayMode.partial
+            track: wavelink.Playable = tracks[0]
+            artist_name = track.artist
+            print("Track to play:", track.title, "by", artist_name)
 
-        player: wavelink.Player = cast(
-            wavelink.Player,
-            context.guild.voice_client
-        )
-        print("Player:", player)
+            await player.queue.put_wait(track)
+            print("Track added to queue.")
 
-        player.autoplay = wavelink.AutoPlayMode.partial
-        track: wavelink.Playable = tracks[0]
-        artist_name = track.artist
-        print("Track to play:", track.title, "by", artist_name)
+            embed = discord.Embed(
+                title="Queued",
+                description=f"**{track.title} - {track.author}**",
+                color=discord.Colour.green()
+            )
+            if track.artwork:
+                embed.set_thumbnail(url=track.artwork)
+            embed.add_field(name="Duration:", value=str(timedelta(milliseconds=track.length)), inline=True)
+            embed.add_field(name="Queue", value=f"{len(player.queue)} songs", inline=True)
+            embed.set_footer(text=f"Source: {track.source.capitalize()}", icon_url=track.artwork)
+            await context.send(embed=embed)
+            print("Sent embed to user.")
 
-        await player.queue.put_wait(track)
-        print("Track added to queue.")
-
-        embed = discord.Embed(
-            title="Queued",
-            description=f"**{track.title} - {track.author}**",
-            color=discord.Colour.green()
-        )
-        if track.artwork:
-            embed.set_thumbnail(url=track.artwork)
-        embed.add_field(name="Duration:", value=str(timedelta(milliseconds=track.length)), inline=True)
-        embed.add_field(name="Queue", value=f"{len(player.queue)} songs", inline=True)
-        embed.set_footer(text=f"Source: {track.source.capitalize()}", icon_url=track.artwork)
-        await context.send(embed=embed)
-        print("Sent embed to user.")
-
-        if not player.playing:
-            print("Player is not playing. Starting playback.")
-            await player.play(player.queue.get(), volume=self.volume)
+            if not player.playing:
+                print("Player is not playing. Starting playback.")
+                await player.play(player.queue.get(), volume=self.volume)
+        except Exception as e:
+            print(f"An error occurred in the play function: {e}")
 
     @commands.hybrid_command(
         name="stop",
