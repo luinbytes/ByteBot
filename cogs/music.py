@@ -67,7 +67,7 @@ class Music(commands.Cog, name="music"):
         song="The song to search for and play."
     )
     async def play(self, context, *, song: str) -> None:
-        print("Play function called with song:", song)
+        print("Playy function called with song:", song)
 
         if not context.author.voice:
             print("User is not connected to a voice channel.")
