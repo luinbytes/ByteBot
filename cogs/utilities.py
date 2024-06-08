@@ -507,7 +507,7 @@ class Utilities(commands.Cog, name="utilities"):
         :param context: The hybrid command context.
         """
         embed = discord.Embed(
-            title="🏓 Pong!",
+            title="🏓 Ponnnnnng!",
             description=f"The bot latency is {round(self.bot.latency * 1000)}ms.",
             color=0xBEBEFE,
         )
