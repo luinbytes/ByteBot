@@ -487,19 +487,6 @@ class SteamTools(commands.Cog, name="steamtools"):
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await context.send(embed=embed)
 
-    async def build_tracked_ids(self, rows):
-        tracked_ids_dict = {
-            row[0]: [await self.bot.fetch_user(int(discord_id.strip())).mention for discord_id in row[1].split(',')]
-            for row in rows
-        }
-
-        tracked_ids = [
-            f"[{await get_steam_profile_name(steam_id)}](https://steamcommunity.com/profiles/{steam_id}) tracked by {' '.join(mentions)}"
-            for steam_id, mentions in tracked_ids_dict.items()
-        ]
-
-        return tracked_ids
-
     @commands.hybrid_command(
         name="tracking",
         description="List all tracked steam users for bans.",
@@ -510,10 +497,11 @@ class SteamTools(commands.Cog, name="steamtools"):
         await context.defer()
         guild_id = context.guild.id
 
-        async with aiosqlite.connect(DB_PATH) as conn, conn.cursor() as cursor:
-            await cursor.execute('SELECT steamid_64, tracked_by FROM GuildSteamBans WHERE guild_id = ?', (guild_id,))
-            rows = await cursor.fetchall()
-
+        async with aiosqlite.connect(DB_PATH) as conn:
+            async with conn.cursor() as cursor:  # Create a Cursor object from the Result object
+                await cursor.execute('SELECT steamid_64, tracked_by FROM GuildSteamBans WHERE guild_id = ?',
+                                     (guild_id,))
+                rows = await cursor.fetchall()
         if not rows:
             embed = discord.Embed(
                 title="No Steam IDs Tracked",
@@ -523,12 +511,22 @@ class SteamTools(commands.Cog, name="steamtools"):
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
         else:
-            tracked_ids_dict = {
-                row[0]: [await self.bot.fetch_user(int(discord_id.strip())).mention for discord_id in row[1].split(',')]
-                for row in rows
-            }
+            tracked_ids_dict = {}
+            for row in rows:
+                steam_id = row[0]
+                discord_ids = row[1].split(',')
+                for discord_id in discord_ids:
+                    discord_user = await self.bot.fetch_user(int(discord_id.strip()))
+                    if steam_id not in tracked_ids_dict:
+                        tracked_ids_dict[steam_id] = [discord_user.mention]
+                    else:
+                        tracked_ids_dict[steam_id].append(discord_user.mention)
 
-            tracked_ids = await self.build_tracked_ids(rows)
+            tracked_ids = []
+            for steam_id, mentions in tracked_ids_dict.items():
+                profile_name = await get_steam_profile_name(steam_id)
+                tracked_ids.append(
+                    f"[{profile_name}](https://steamcommunity.com/profiles/{steam_id}) tracked by {' '.join(mentions)}")
 
             embed = discord.Embed(
                 title="Tracked Steam IDs",
