@@ -471,6 +471,7 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def autorole(self, context: Context, role: discord.Role):
+        await context.defer()  # Defer the interaction response
         await guild_autoroles(self, context.guild.id, role.id)
 
         for member in context.guild.members:
