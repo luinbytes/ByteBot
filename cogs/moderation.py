@@ -474,14 +474,21 @@ class Moderation(commands.Cog, name="moderation"):
         await context.defer()  # Defer the interaction response
         await guild_autoroles(self, context.guild.id, role.id)
 
+        # Create a list of tasks for assigning roles
+        tasks = []
         for member in context.guild.members:
-            if not member.bot:
-                await member.add_roles(role)
+            if not member.bot and role not in member.roles:
+                tasks.append(self.assign_role(member, role))
+
+        # Run the tasks concurrently
+        await asyncio.gather(*tasks)
 
         embed = discord.Embed(
-            title="Autorole Set",
-            description=f"The autorole has been set to {role.mention}."
+            title="✅ Autorole Set",
+            description=f"Autorole for {context.guild.name} has been set to {role.mention}.",
+            color=0xBEBEFE
         )
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
         await context.send(embed=embed)
 
     @commands.hybrid_command(
