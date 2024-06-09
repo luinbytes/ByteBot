@@ -487,6 +487,19 @@ class SteamTools(commands.Cog, name="steamtools"):
                     embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                     await context.send(embed=embed)
 
+    async def build_tracked_ids(self, rows):
+        tracked_ids_dict = {
+            row[0]: [await self.bot.fetch_user(int(discord_id.strip())).mention for discord_id in row[1].split(',')]
+            for row in rows
+        }
+
+        tracked_ids = [
+            f"[{await get_steam_profile_name(steam_id)}](https://steamcommunity.com/profiles/{steam_id}) tracked by {' '.join(mentions)}"
+            for steam_id, mentions in tracked_ids_dict.items()
+        ]
+
+        return tracked_ids
+
     @commands.hybrid_command(
         name="tracking",
         description="List all tracked steam users for bans.",
@@ -515,10 +528,7 @@ class SteamTools(commands.Cog, name="steamtools"):
                 for row in rows
             }
 
-            tracked_ids = [
-                f"[{await get_steam_profile_name(steam_id)}](https://steamcommunity.com/profiles/{steam_id}) tracked by {' '.join(mentions)}"
-                for steam_id, mentions in tracked_ids_dict.items()
-            ]
+            tracked_ids = await self.build_tracked_ids(rows)
 
             embed = discord.Embed(
                 title="Tracked Steam IDs",
