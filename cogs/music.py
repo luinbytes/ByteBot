@@ -31,14 +31,16 @@ class Music(commands.Cog, name="music"):
 
     async def play_music(self, guild_id, query):
         player = self.bot.wavelink.get_player(guild_id)
-        results = await player.node.get_tracks(query)
-
-        if not results or not results['tracks']:
+        query = query.strip('<>')
+        if not player.is_connected:
+            await self.connect_to_channel(self.channel)
+        track = await self.bot.wavelink.get_tracks(f'ytsearch:{query}')
+        if not track:
             return None
-
-        track = results['tracks'][0]
-        await player.play(track)
-        return track
+        player.add(requester=self.channel.author.id, track=track[0])
+        if not player.is_playing:
+            await player.play()
+        return track[0]
 
     async def pause_music(self, guild_id):
         player = self.bot.wavelink.get_player(guild_id)

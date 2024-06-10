@@ -140,7 +140,6 @@ class DiscordBot(commands.Bot):
             intents=intents,
             help_command=None,
         )
-        self.wavelink = wavelink.Client(bot=self)
         self.logger = logger
         self.config = config
         self.database = None
