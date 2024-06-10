@@ -127,39 +127,6 @@ class Music(commands.Cog, name="music"):
             async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
                 await interaction.response.send_modal(MusicSearchModal(self, self.wavelink))
 
-            async def connect_to_channel(self, channel):
-                player: wavelink.Player = context.guild.voice_client
-                await player.connect(channel.id)
-
-            async def disconnect_from_channel(self, guild_id):
-                player: wavelink.Player = context.guild.voice_client
-                await player.disconnect()
-
-            async def play_music(self, guild_id, query):
-                player: wavelink.Player = context.guild.voice_client
-                query = query.strip('<>')
-                if not player.is_connected:
-                    await self.connect_to_channel(self.channel)
-                track = await self.wavelink.get_tracks(f'ytsearch:{query}')
-                if not track:
-                    return None
-                player.add(requester=self.channel.author.id, track=track[0])
-                if not player.is_playing:
-                    await player.play()
-                return track[0]
-
-            async def pause_music(self, guild_id):
-                player: wavelink.Player = context.guild.voice_client
-                await player.set_pause(True)
-
-            async def resume_music(self, guild_id):
-                player: wavelink.Player = context.guild.voice_client
-                await player.set_pause(False)
-
-            async def skip_music(self, guild_id):
-                player: wavelink.Player = context.guild.voice_client
-                await player.stop()
-
         class MusicSearchModal(discord.ui.Modal):
             def __init__(self, view, bot):
                 super().__init__(title="Search for a song")
@@ -168,13 +135,46 @@ class Music(commands.Cog, name="music"):
                 self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
                 self.add_item(self.placeholder)  # Add the TextInput component to the modal
 
+            async def play_music(self, guild_id, query):
+                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                query = query.strip('<>')
+                if not player.is_connected:
+                    await self.connect_to_channel(self.channel)
+                track = await self.wavelink.get_tracks(f'ytsearch:{query}')
+                if not track:
+                    return None
+                player.add(requester=self.channel.author.id, track=track[0])
+                if not player.playing:
+                    await player.play()
+                return track[0]
+
+            async def pause_music(self, guild_id):
+                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                await player.set_pause(True)
+
+            async def resume_music(self, guild_id):
+                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                await player.set_pause(False)
+
+            async def skip_music(self, guild_id):
+                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                await player.stop()
+
+            async def connect_to_channel(self, channel):
+                player: wavelink.Player = self.bot.wavelink.get_player(channel.guild.id)
+                await player.connect(channel.id)
+
+            async def disconnect_from_channel(self, guild_id):
+                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                await player.disconnect()
+
             async def interaction_check(self, interaction: discord.Interaction) -> bool:
                 return interaction.user == self.view.user
 
             async def on_submit(self, interaction: discord.Interaction):
                 await interaction.response.send_message("Searching for the song...", ephemeral=True)
                 query = interaction.message.content
-                track = await self.play_music(interaction.guild_id, query)
+                track = await self.view.play_music(interaction.guild_id, query)
                 if track:
                     await interaction.response.send_message(f"Playing {track.title} by {track.author}.", ephemeral=True)
                 else:
