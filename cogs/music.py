@@ -82,13 +82,28 @@ class Music(commands.Cog, name="music"):
                                       add_reactions=False)
         channel_id = channel.id
 
+        class MusicSearchModal(discord.ui.Modal):
+            def __init__(self):
+                super().__init__(title="Search for a song")
+                self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
+                self.add_item(self.placeholder)  # Add the TextInput component to the modal
+
+            async def on_submit(self, interaction: discord.Interaction):
+                print("on_submit method called")  # Debugging print statement
+                try:
+                    print("Before sending message")  # Debugging print statement
+                    await interaction.response.send_message("Searching for the song...")
+                    query = interaction.message.content
+                    print(f"Query: {query}")  # Debugging print statement
+                    await self.view.play_music(interaction.guild_id, query)
+                except Exception as e:
+                    print(f"Exception in on_submit: {e}")  # Debugging print statement
+
         # send music control embed to the channel
         class MusicButtons(discord.ui.View):
             def __init__(self, user, bot):
                 super().__init__()
                 self.user = user
-                self.bot = bot
-                self.value = None
                 self.player = None
                 self.wavelink = wavelink
 
@@ -135,59 +150,42 @@ class Music(commands.Cog, name="music"):
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
                 await player.disconnect()
 
-            async def on_submit(self, interaction: discord.Interaction):
-                print("on_submit method called")  # Debugging print statement
-                try:
-                    print("Before sending message")  # Debugging print statement
-                    await interaction.response.send_message("Searching for the song...")
-                    query = interaction.message.content
-                    print(f"Query: {query}")  # Debugging print statement
-                    await self.view.play_music(interaction.guild_id, query)
-                except Exception as e:
-                    print(f"Exception in on_submit: {e}")  # Debugging print statement
-
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
                 if self.player.get_player(interaction.guild_id).queue:
-                    await self.player
+                    await self.skip_music(interaction.guild_id)
+                    await interaction.response.send_message("Skipped to the previous song.")
+                else:
+                    await interaction.response.send_message("No previous song in the queue.")
 
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
                 await self.pause_music(interaction.guild_id)
+                await interaction.response.send_message("Toggled pause on the current song.")
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
                 await self.skip_music(interaction.guild_id)
-
-            @discord.ui.button(label="⠀", style=discord.ButtonStyle.primary, disabled=True)
-            async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
-                pass
+                await interaction.response.send_message("Skipped the current song.")
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
                 await player.set_volume(player.volume + 10)
+                await interaction.response.send_message(f"Volume set to {player.volume}%")
 
             @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
             async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
                 await player.set_volume(player.volume - 10)
+                await interaction.response.send_message(f"Volume set to {player.volume}%")
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
-            async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
+            async def search(self, button: discord.ui.Button, interaction: discord.Interaction):
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
-
-        class MusicSearchModal(discord.ui.Modal):
-            def __init__(self, view, bot):
-                super().__init__(title="Search for a song")
-                self.view = view
-                self.bot = bot
-                self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
-                self.add_item(self.placeholder)  # Add the TextInput component to the modal
-                self.wavelink = wavelink
 
         embed = discord.Embed(
             title="🎶 ByteBot DJ",
