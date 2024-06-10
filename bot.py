@@ -11,6 +11,7 @@ import wavelink
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
+from wavelink import NodeStatus
 
 from database import DatabaseManager
 
@@ -256,8 +257,17 @@ class DiscordBot(commands.Bot):
                         await self.guild_prefix(guild_id, '>')
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
 
-        wavelink = await self.wavelink.add_node(host='127.0.0.1', port=2333, password='youshallnotpass',
-                                                identifier='MAIN', region='us_central')
+        node: wavelink.Node = wavelink.Node(
+            uri="http://lavalink:2333",
+            password="youshallnotpass",
+            retries=25
+        )
+        if await wavelink.Pool.connect(client=self, nodes=[node]):
+            self.logger.log(logging.INFO, "Connected to Wavelink nodes")
+        else:
+            if node.status == NodeStatus.DISCONNECTED:
+                self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
+                await node._session.close()
 
     async def on_message(self, message: discord.Message) -> None:
         """
