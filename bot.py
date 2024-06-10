@@ -256,7 +256,13 @@ class DiscordBot(commands.Bot):
                         await self.guild_prefix(guild_id, '>')
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
 
-        await self.connect_nodes()
+        await self.wavelink.initiate_node(
+            host='lavalink',
+            port=2333,
+            password='youshallnotpass',
+            identifier='MAIN',
+            region='us_central'
+        )
 
     async def on_message(self, message: discord.Message) -> None:
         """
@@ -372,22 +378,6 @@ class DiscordBot(commands.Bot):
             raise (error)
         else:
             raise error
-
-    async def connect_nodes(self) -> None:
-        """
-        Connects to Wavelink nodes.
-        """
-        try:
-            await self.wavelink.initiate_node(
-                host='lavalink',
-                port=2333,
-                password='youshallnotpass',
-                identifier='MAIN',
-                region='us_central'
-            )
-            self.logger.log(logging.INFO, "Connected to Wavelink nodes")
-        except Exception as e:
-            self.logger.log(logging.CRITICAL, f"Failed to connect to Wavelink nodes: {e}")
 
 
 load_dotenv()
