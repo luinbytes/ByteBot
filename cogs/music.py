@@ -169,6 +169,7 @@ class Music(commands.Cog, name="music"):
                 self.view = view
                 self.bot = bot
                 self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
+                self.add_item(self.placeholder)  # Add the TextInput component to the modal
 
             async def interaction_check(self, interaction: discord.Interaction) -> bool:
                 return interaction.user == self.view.user
