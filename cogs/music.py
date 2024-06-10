@@ -163,7 +163,7 @@ class Music(commands.Cog, name="music"):
                 await interaction.response.send_modal(MusicSearchModal())
 
         class MusicSearchModal(discord.ui.Modal, title="Search for a song"):
-            placeholder = discord.ui.TextInput(placeholder="Enter the song you would like to search for.")
+            placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
 
             async def interaction_check(self, interaction: discord.Interaction) -> bool:
                 return interaction.user == context.author
