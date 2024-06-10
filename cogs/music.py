@@ -119,9 +119,10 @@ class Music(commands.Cog, name="music"):
 
         # send music control embed to the channel
         class MusicButtons(discord.ui.View):
-            def __init__(self, user):
+            def __init__(self, user, bot):
                 super().__init__()
                 self.user = user
+                self.bot = bot
                 self.value = None
                 self.player = None
 
