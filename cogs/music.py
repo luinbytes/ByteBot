@@ -172,7 +172,7 @@ class Music(commands.Cog, name="music"):
                 await player.set_volume(player.volume - 10)
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
-            async def search(self, interaction: discord.Interaction):
+            async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
                 await interaction.response.send_message("Please enter the song you would like to search for.",
                                                         ephemeral=True, view=MusicSearchModal())
 
