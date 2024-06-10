@@ -1,5 +1,6 @@
 import logging
 import os
+import traceback
 from datetime import timedelta
 from typing import cast
 
@@ -95,7 +96,7 @@ class Music(commands.Cog, name="music"):
                     await self.view.play_music(interaction.guild_id, query)
                     await interaction.response.send_message(f"Searching for {query}...")
                 except Exception as e:
-                    await interaction.response.send_message(f"An error occurred: {e}")
+                    await interaction.response.send_message(f"An error occurred: {traceback.format_exc()}")
 
         # send music control embed to the channel
         class MusicButtons(discord.ui.View):
