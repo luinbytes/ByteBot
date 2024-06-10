@@ -77,6 +77,21 @@ class Music(commands.Cog, name="music"):
         channel = await context.guild.create_text_channel("music-control")
         channel_id = channel.id
 
+        # check if music channel already exists
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                         (guild_id,))
+            channel_id = await channel_id.fetchone()
+            if channel_id:
+                embed = discord.Embed(
+                    title="Error",
+                    description="Music bot is already setup in this server.",
+                    color=discord.Colour.red()
+                )
+                await context.send(embed=embed)
+                return
+
         # send music control embed to the channel
         class MusicButtons(discord.ui.View):
             def __init__(self, user):
@@ -145,7 +160,7 @@ class Music(commands.Cog, name="music"):
                 color=discord.Colour.red()
             )
             await context.send(embed=embed)
-            pass
+            return
 
     @commands.hybrid_command(
         name="removemusic",
@@ -167,7 +182,18 @@ class Music(commands.Cog, name="music"):
                 channel_id = await channel_id.fetchone()
                 if channel_id:
                     channel = context.guild.get_channel(channel_id[0])
-                    await channel.delete()
+
+                    try:
+                        await channel.delete()
+                    except discord.Forbidden:
+                        embed = discord.Embed(
+                            title="Error",
+                            description="I do not have permission to delete the music channel.",
+                            color=discord.Colour.red()
+                        )
+                        await context.send(embed=embed)
+                        return
+
                 else:
                     embed = discord.Embed(
                         title="Error",
@@ -176,7 +202,7 @@ class Music(commands.Cog, name="music"):
                     )
                     await context.send(embed=embed)
                     return
-                
+
                 await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
                 await conn.commit()
                 embed = discord.Embed(
