@@ -168,11 +168,21 @@ class Music(commands.Cog, name="music"):
                 super().__init__()
                 self.value = None
 
-            @discord.ui.text_input(placeholder='Please enter the song...', min_length=1, max_length=256,
-                                   custom_id='song_search')
-            async def song_search(self, interaction: discord.Interaction, value: str):
-                self.value = value
-                await interaction.response.send_message(f'Searching for {self.value}...', ephemeral=True)
+            @discord.ui.button(label="Enter Song", style=discord.ButtonStyle.primary, custom_id='song_search')
+            async def song_search(self, button: discord.ui.Button, interaction: discord.Interaction):
+                # Ask the user for the song name
+                await interaction.response.send_message("Please enter the song you would like to search for.",
+                                                        ephemeral=True)
+
+                # Wait for the user's message
+                def check(m):
+                    return m.author == interaction.user and m.channel == interaction.channel
+
+                message = await self.bot.wait_for('message', check=check)
+
+                # Now you have the user's message in the `message` variable
+                self.value = message.content
+                await interaction.followup.send(f'Searching for {self.value}...', ephemeral=True)
                 player: wavelink.Player = interaction.guild.voice_client
                 await play_music(interaction.guild_id, self.value)
                 self.stop()
