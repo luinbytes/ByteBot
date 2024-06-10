@@ -7,6 +7,7 @@ import sys
 
 import aiosqlite
 import discord
+import wavelink
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
