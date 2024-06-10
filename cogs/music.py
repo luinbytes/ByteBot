@@ -94,7 +94,7 @@ class Music(commands.Cog, name="music"):
                 try:
                     query = interaction.message.content
                     await self.view.play_music(interaction.guild_id, query)
-                    await interaction.response.edit_message(content="Song added to the queue.")
+                    await interaction.response.send_message(f"Searching for {query}...")
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {e}")
 
@@ -108,6 +108,12 @@ class Music(commands.Cog, name="music"):
                 self.wavelink = self.bot.wavelink
 
             async def play_music(self, guild_id, query):
+                embed = discord.Embed(
+                    title="Now Playing:",
+                    description=query,
+                    color=discord.Colour.purple()
+                )
+                await channel.send(embed=embed)
                 logging.log(logging.INFO, f"Playing {query}")
                 player: wavelink.Player = cast(
                     wavelink.Player,
