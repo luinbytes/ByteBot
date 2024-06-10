@@ -110,7 +110,7 @@ class Music(commands.Cog, name="music"):
 
             async def play_music(self, guild_id, query):
                 logging.log(logging.INFO, f"Playing {query}")
-                player = self.bot.lavalink.player_manager.get(guild_id)  # Get the player from the player_manager
+                player = self.bot.wavelink.player_manager.get(guild_id)  # Get the player from the player_manager
                 self.player = player
                 query = query.strip('<>')
                 destination = self.user.voice.channel
