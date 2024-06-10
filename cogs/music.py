@@ -72,19 +72,6 @@ class Music(commands.Cog, name="music"):
         track_duration = str(timedelta(milliseconds=track.length))
         if '.' in track_duration:
             track_duration = track_duration.split('.')[0]
-        description = track.title
-
-        embed = discord.Embed(
-            title="Now Playing",
-            description=f"**{payload.track.title}**",
-            color=discord.Colour.green()
-        )
-        if track.artwork:
-            embed.set_thumbnail(url=payload.track.artwork)
-        embed.add_field(name="Duration:", value=track_duration, inline=True)
-        embed.add_field(name="Queue", value=f"{len(player.queue)} songs", inline=True)
-        embed.set_footer(text=f"Source: {track.source.capitalize()}")
-        await self.channel.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackStartEventPayload) -> None:
@@ -176,14 +163,19 @@ class Music(commands.Cog, name="music"):
                 await interaction.response.send_message("Please enter the song you would like to search for.",
                                                         ephemeral=True, view=MusicSearchModal())
 
-        class MusicSearchModal(discord.ui.Modal, title="Search for a song"):
-            song = discord.ui.TextInput(label="Song Search", placeholder="Please enter the song...", min_length=1,
-                                        max_length=256)
+        class MusicSearchModal(discord.ui.View):
+            def __init__(self):
+                super().__init__()
+                self.value = None
 
-            async def on_submit(self, interaction: discord.Interaction):
-                await interaction.response.send_message(f"Searching for {self.song.value}...", ephemeral=True)
-                player: wavelink.Player = context.guild.voice_client
-                await play_music(interaction.guild_id, self.song.value)
+            @discord.ui.text_input(placeholder='Please enter the song...', min_length=1, max_length=256,
+                                   custom_id='song_search')
+            async def song_search(self, interaction: discord.Interaction, value: str):
+                self.value = value
+                await interaction.response.send_message(f'Searching for {self.value}...', ephemeral=True)
+                player: wavelink.Player = interaction.guild.voice_client
+                await play_music(interaction.guild_id, self.value)
+                self.stop()
 
         embed = discord.Embed(
             title="🎶 ByteBot DJ",
@@ -209,7 +201,7 @@ class Music(commands.Cog, name="music"):
                 await conn.commit()
                 embed = discord.Embed(
                     title="Success",
-                    description="Music bot setup successfully.",
+                    description=f"Music bot setup successfully - {channel.mention}",
                     color=discord.Colour.green()
                 )
                 embed.set_footer(text=f"Requested by {context.author.display_name}", icon_url=context.author.avatar.url)
