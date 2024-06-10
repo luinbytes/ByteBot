@@ -1,12 +1,14 @@
 import logging
 import os
 from datetime import timedelta
+from typing import cast
 
 import aiosqlite
 import discord
 import wavelink
 from discord.ext import commands
 from discord.ext.commands import Context
+from wavelink.exceptions import LavalinkLoadException
 
 # Ensure database directory exists
 DATABASE_DIR = "database"
@@ -90,26 +92,35 @@ class Music(commands.Cog, name="music"):
                 self.player = None
                 self.wavelink = wavelink
 
-            async def play_music(self, guild_id, query):
+            async def play_music(self, interaction: discord.Interaction, guild_id, query):
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
                 query = query.strip('<>')
-                if not player.is_connected:
-                    await self.connect_to_channel(self.channel)
-                track = await self.wavelink.get_tracks(f'ytsearch:{query}')
-                if not track:
+                destination = context.author.voice.channel
+                try:
+                    tracks: wavelink.Search = await wavelink.Playable.search(query)
+                    if not tracks:
+                        interaction.response.send_message("No results found.", ephemeral=True)
+                        return None
+                except LavalinkLoadException:
+                    interaction.response.send_message("An error occurred while searching for the song.", ephemeral=True)
                     return None
-                player.add(requester=self.channel.author.id, track=track[0])
-                if not player.playing:
-                    await player.play()
-                return track[0]
+
+                if not context.guild.voice_client:
+                    await destination.connect(cls=wavelink.Player, self_deaf=True)
+
+                player: wavelink.Player = cast(
+                    wavelink.Player, context.guild.voice_client
+                )
+
+                player.autoplay = wavelink.AutoPlayMode.partial
+                track: wavelink.Playable = tracks[0]
+                await player.queue.put_wait(track)
+                interaction.response.send_message(f"Added {track.title} by {track.author} to the queue.",
+                                                  ephemeral=True)
 
             async def pause_music(self, guild_id):
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
-                await player.set_pause(True)
-
-            async def resume_music(self, guild_id):
-                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
-                await player.set_pause(False)
+                await player.pause(not player.paused)
 
             async def skip_music(self, guild_id):
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
