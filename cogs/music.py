@@ -161,15 +161,17 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
-                await interaction.response.send_modal(MusicSearchModal(self.bot))
+                await interaction.response.send_modal(MusicSearchModal(self, self.bot))
 
-        class MusicSearchModal(self, self.bot, discord.ui.Modal, title="Search for a song"):
-            def __init__(self, bot):
-                super().__init__()
+        class MusicSearchModal(discord.ui.Modal):
+            def __init__(self, view, bot):
+                super().__init__(title="Search for a song")
+                self.view = view
+                self.bot = bot
                 self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
 
             async def interaction_check(self, interaction: discord.Interaction) -> bool:
-                return interaction.user == context.author
+                return interaction.user == self.view.user
 
             async def on_submit(self, interaction: discord.Interaction):
                 await interaction.response.send_message("Searching for the song...", ephemeral=True)
