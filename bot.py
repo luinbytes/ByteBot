@@ -141,7 +141,7 @@ class DiscordBot(commands.Bot):
         self.logger = logger
         self.config = config
         self.database = None
-        self.wavelink = None
+        self.wavelink = wavelink
 
     async def guild_prefix(self, guild_id, prefix=None):
         async with aiosqlite.connect(DB_PATH) as db:
@@ -255,8 +255,8 @@ class DiscordBot(commands.Bot):
                         await self.guild_prefix(guild_id, '>')
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
 
-        self.wavelink = await self.wavelink.add_node(host='127.0.0.1', port=2333, password='youshallnotpass',
-                                                     identifier='MAIN', region='us_central')
+        wavelink = await self.wavelink.add_node(host='127.0.0.1', port=2333, password='youshallnotpass',
+                                                identifier='MAIN', region='us_central')
 
     async def on_message(self, message: discord.Message) -> None:
         """
