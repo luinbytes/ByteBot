@@ -105,7 +105,7 @@ class Music(commands.Cog, name="music"):
                 self.user = user
                 self.player = None
                 self.bot = bot
-                self.wavelink = wavelink
+                self.wavelink = self.bot.wavelink
 
             async def play_music(self, guild_id, query):
                 print("play_music method called")  # Debugging print statement
