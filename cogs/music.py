@@ -171,12 +171,8 @@ class Music(commands.Cog, name="music"):
                 player: wavelink.Player = context.guild.voice_client
                 await player.set_volume(player.volume - 10)
 
-            @discord.ui.button(label="⠀", style=discord.ButtonStyle.primary, disabled=True)
-            async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
-                pass
-
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
-            async def search(self, button: discord.ui.Button, interaction: discord.Interaction):
+            async def search(self, interaction: discord.Interaction):
                 await interaction.response.send_message("Please enter the song you would like to search for.",
                                                         ephemeral=True, view=MusicSearchModal())
 
