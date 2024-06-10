@@ -137,11 +137,8 @@ class Music(commands.Cog, name="music"):
             async def on_submit(self, interaction: discord.Interaction):
                 await interaction.response.send_message("Searching for the song...", ephemeral=True)
                 query = interaction.message.content
-                track = await self.play_music(interaction.guild_id, query)
-                if track:
-                    await interaction.response.send_message(f"Playing {track.title} by {track.author}.", ephemeral=True)
-                else:
-                    await interaction.response.send_message("No results found.", ephemeral=True)
+                print(query)
+                await self.play_music(interaction.guild_id, query)
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
