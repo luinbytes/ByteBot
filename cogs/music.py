@@ -88,6 +88,7 @@ class Music(commands.Cog, name="music"):
                 self.bot = bot
                 self.value = None
                 self.player = None
+                self.wavelink = wavelink
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -124,7 +125,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
-                await interaction.response.send_modal(MusicSearchModal(self, self.bot))
+                await interaction.response.send_modal(MusicSearchModal(self, self.bot, self.wavelink))
 
         class MusicSearchModal(discord.ui.Modal):
             def __init__(self, view, bot):
