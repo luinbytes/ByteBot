@@ -135,19 +135,19 @@ class Music(commands.Cog, name="music"):
                 self.add_item(self.placeholder)  # Add the TextInput component to the modal
 
             async def connect_to_channel(self, channel):
-                player = self.bot.wavelink.get_player(channel.guild.id)
+                player = self.wavelink.get_player(channel.guild.id)
                 await player.connect(channel.id)
 
             async def disconnect_from_channel(self, guild_id):
-                player = self.bot.wavelink.get_player(guild_id)
+                player = self.wavelink.get_player(guild_id)
                 await player.disconnect()
 
             async def play_music(self, guild_id, query):
-                player = self.bot.wavelink.get_player(guild_id)
+                player = self.wavelink.get_player(guild_id)
                 query = query.strip('<>')
                 if not player.is_connected:
                     await self.connect_to_channel(self.channel)
-                track = await self.bot.wavelink.get_tracks(f'ytsearch:{query}')
+                track = await self.wavelink.get_tracks(f'ytsearch:{query}')
                 if not track:
                     return None
                 player.add(requester=self.channel.author.id, track=track[0])
@@ -156,15 +156,15 @@ class Music(commands.Cog, name="music"):
                 return track[0]
 
             async def pause_music(self, guild_id):
-                player = self.bot.wavelink.get_player(guild_id)
+                player = self.wavelink.get_player(guild_id)
                 await player.set_pause(True)
 
             async def resume_music(self, guild_id):
-                player = self.bot.wavelink.get_player(guild_id)
+                player = self.wavelink.get_player(guild_id)
                 await player.set_pause(False)
 
             async def skip_music(self, guild_id):
-                player = self.bot.wavelink.get_player(guild_id)
+                player = self.wavelink.get_player(guild_id)
                 await player.stop()
 
             async def interaction_check(self, interaction: discord.Interaction) -> bool:
