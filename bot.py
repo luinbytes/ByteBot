@@ -140,10 +140,10 @@ class DiscordBot(commands.Bot):
             intents=intents,
             help_command=None,
         )
-        self.wavelink = wavelink.Client(bot=self)
         self.logger = logger
         self.config = config
         self.database = None
+        self.wavelink = None
 
     async def guild_prefix(self, guild_id, prefix=None):
         async with aiosqlite.connect(DB_PATH) as db:
@@ -378,12 +378,12 @@ class DiscordBot(commands.Bot):
         """
         Connects to Wavelink nodes.
         """
-        node: wavelink.Node = wavelink.Node(
+        node: wavelink.Node = self.wavelink.Node(
             uri="http://lavalink:2333",
             password="youshallnotpass",
             retries=25
         )
-        if await wavelink.Pool.connect(client=self, nodes=[node]):
+        if await self.wavelink.Pool.connect(client=self, nodes=[node]):
             self.logger.log(logging.INFO, "Connected to Wavelink nodes")
         else:
             if node.status == NodeStatus.DISCONNECTED:
