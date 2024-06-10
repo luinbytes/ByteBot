@@ -171,7 +171,8 @@ class Music(commands.Cog, name="music"):
             async def on_submit(self, interaction: discord.Interaction):
                 await interaction.response.send_message("Searching for the song...", ephemeral=True)
                 query = interaction.message.content
-                track = await play_music(interaction.guild_id, query)
+                music_cog = self.bot.get_cog("music")
+                track = await music_cog.play_music(interaction.guild_id, query)
                 if track:
                     await interaction.response.send_message(f"Playing {track.title} by {track.author}.", ephemeral=True)
                 else:
