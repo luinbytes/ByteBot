@@ -178,8 +178,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
-                modal = MusicSearchModal(self, self.bot)
-                await interaction.response.send_modal(modal)
+                await interaction.response.send_modal(MusicSearchModal())
 
         class MusicSearchModal(discord.ui.Modal):
             def __init__(self, view, bot):
@@ -188,6 +187,7 @@ class Music(commands.Cog, name="music"):
                 self.bot = bot
                 self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
                 self.add_item(self.placeholder)  # Add the TextInput component to the modal
+                self.wavelink = wavelink
 
         embed = discord.Embed(
             title="🎶 ByteBot DJ",
