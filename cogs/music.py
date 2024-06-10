@@ -72,11 +72,6 @@ class Music(commands.Cog, name="music"):
         await context.defer()
         # grab the guild id
         guild_id = context.guild.id
-
-        # create a text channel
-        channel = await context.guild.create_text_channel("music-control")
-        channel_id = channel.id
-
         # check if music channel already exists
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
@@ -91,6 +86,10 @@ class Music(commands.Cog, name="music"):
                 )
                 await context.send(embed=embed)
                 return
+
+        # create a text channel
+        channel = await context.guild.create_text_channel("music-control")
+        channel_id = channel.id
 
         # send music control embed to the channel
         class MusicButtons(discord.ui.View):
