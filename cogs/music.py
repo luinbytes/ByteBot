@@ -172,16 +172,36 @@ class Music(commands.Cog, name="music"):
         # grab the guild id
         guild_id = context.guild.id
 
+        try:
+            async with aiosqlite.connect(DB_PATH) as conn:
+                c = await conn.cursor()
+                await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                await conn.commit()
+        except aiosqlite.IntegrityError:
+            embed = discord.Embed(
+                title="Error",
+                description="Music bot is not setup in this server.",
+                color=discord.Colour.red()
+            )
+            await context.send(embed=embed)
+            return
+
         # remove the music channel
         try:
             async with aiosqlite.connect(DB_PATH) as conn:
                 c = await conn.cursor()
                 channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
                                              (guild_id,))
-                channel_id = await channel_id.fetchone()
                 if channel_id:
                     channel = context.guild.get_channel(channel_id[0])
-
+                    if channel is None:
+                        embed = discord.Embed(
+                            title="Error",
+                            description="The music channel does not exist.",
+                            color=discord.Colour.red()
+                        )
+                        await context.send(embed=embed)
+                        return
                     try:
                         await channel.delete()
                     except discord.Forbidden:
@@ -202,8 +222,6 @@ class Music(commands.Cog, name="music"):
                     await context.send(embed=embed)
                     return
 
-                await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-                await conn.commit()
                 embed = discord.Embed(
                     title="Success",
                     description="Music bot removed successfully.",
