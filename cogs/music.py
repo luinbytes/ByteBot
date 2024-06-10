@@ -99,6 +99,10 @@ class Music(commands.Cog, name="music"):
                 self.value = "skip"
                 self.stop()
 
+            @discord.ui.button(label=" ", style=discord.ButtonStyle.primary, disabled=True)
+            async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
+                pass
+
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.primary)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
                 self.value = "volume_up"
@@ -114,6 +118,9 @@ class Music(commands.Cog, name="music"):
             description="Welcome to ByteBot DJ! Use the buttons below to control the music bot.",
             color=discord.Colour.pink()
         )
+        embed.set_thumbnail(
+            url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
+        embed.add_field(name="Now Playing:", value="Nothing", inline=False)
         embed.set_footer(text="ByteBot DJ")
         buttons = MusicButtons(context.author)
         await channel.send(embed=embed, view=buttons)
