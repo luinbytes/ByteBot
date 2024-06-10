@@ -83,8 +83,10 @@ class Music(commands.Cog, name="music"):
         channel_id = channel.id
 
         class MusicSearchModal(discord.ui.Modal):
-            def __init__(self):
+            def __init__(self, view, bot):
                 super().__init__(title="Search for a song")
+                self.view = view
+                self.bot = bot
                 self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
                 self.add_item(self.placeholder)  # Add the TextInput component to the modal
 
