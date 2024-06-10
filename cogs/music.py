@@ -92,7 +92,6 @@ class Music(commands.Cog, name="music"):
 
             async def on_submit(self, interaction: discord.Interaction):
                 try:
-                    await interaction.response.send_message("Searching for the song...")
                     query = interaction.message.content
                     await self.view.play_music(interaction.guild_id, query)
                     await interaction.response.edit_message("Song added to the queue.")
