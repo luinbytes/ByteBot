@@ -15,48 +15,42 @@ if not os.path.exists(DATABASE_DIR):
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 
-async def connect_to_channel(self, channel):
-    player = self.bot.wavelink.get_player(channel.guild.id)
-    await player.connect(channel.id)
-
-
-async def disconnect_from_channel(self, guild_id):
-    player = self.bot.wavelink.get_player(guild_id)
-    await player.disconnect()
-
-
-async def play_music(self, guild_id, query):
-    player = self.bot.wavelink.get_player(guild_id)
-    results = await player.node.get_tracks(query)
-
-    if not results or not results['tracks']:
-        return None
-
-    track = results['tracks'][0]
-    await player.play(track)
-    return track
-
-
-async def pause_music(self, guild_id):
-    player = self.bot.wavelink.get_player(guild_id)
-    await player.set_pause(True)
-
-
-async def resume_music(self, guild_id):
-    player = self.bot.wavelink.get_player(guild_id)
-    await player.set_pause(False)
-
-
-async def skip_music(self, guild_id):
-    player = self.bot.wavelink.get_player(guild_id)
-    await player.stop()
-
-
 class Music(commands.Cog, name="music"):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.channel = None
         self.volume = 5
+
+    async def connect_to_channel(self, channel):
+        player = self.bot.wavelink.get_player(channel.guild.id)
+        await player.connect(channel.id)
+
+    async def disconnect_from_channel(self, guild_id):
+        player = self.bot.wavelink.get_player(guild_id)
+        await player.disconnect()
+
+    async def play_music(self, guild_id, query):
+        player = self.bot.wavelink.get_player(guild_id)
+        results = await player.node.get_tracks(query)
+
+        if not results or not results['tracks']:
+            return None
+
+        track = results['tracks'][0]
+        await player.play(track)
+        return track
+
+    async def pause_music(self, guild_id):
+        player = self.bot.wavelink.get_player(guild_id)
+        await player.set_pause(True)
+
+    async def resume_music(self, guild_id):
+        player = self.bot.wavelink.get_player(guild_id)
+        await player.set_pause(False)
+
+    async def skip_music(self, guild_id):
+        player = self.bot.wavelink.get_player(guild_id)
+        await player.stop()
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, node: wavelink.Node) -> None:
@@ -136,14 +130,14 @@ class Music(commands.Cog, name="music"):
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
                 if player.set_pause(True):
-                    await resume_music(interaction.guild_id)
+                    await self.resume_music(interaction.guild_id)
                 else:
-                    await pause_music(interaction.guild_id)
+                    await self.pause_music(interaction.guild_id)
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
-                await skip_music(interaction.guild_id)
+                await self.skip_music(interaction.guild_id)
 
             @discord.ui.button(label="⠀", style=discord.ButtonStyle.primary, disabled=True)
             async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
