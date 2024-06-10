@@ -131,29 +131,44 @@ class Music(commands.Cog, name="music"):
                 if not self.bot.get_guild(guild_id).voice_client:
                     await destination.connect(cls=wavelink.Player, self_deaf=True)
 
-                player.autoplay = wavelink.AutoPlayMode.partial
+                player.autoplay = self.wavelink.AutoPlayMode.partial
                 track: wavelink.Playable = tracks[0]
                 await player.queue.put_wait(track)
 
             async def pause_music(self, guild_id):
-                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await player.pause(not player.paused)
 
             async def skip_music(self, guild_id):
-                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await player.stop()
 
             async def connect_to_channel(self, channel):
-                player: wavelink.Player = self.bot.wavelink.get_player(channel.guild.id)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await player.connect(channel.id)
 
             async def disconnect_from_channel(self, guild_id):
-                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await player.disconnect()
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 if self.player.get_player(interaction.guild_id).queue:
                     await self.skip_music(interaction.guild_id)
                     await interaction.response.send_message("Skipped to the previous song.")
@@ -162,25 +177,37 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await self.pause_music(interaction.guild_id)
                 await interaction.response.send_message("Toggled pause on the current song.")
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await self.skip_music(interaction.guild_id)
                 await interaction.response.send_message("Skipped the current song.")
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await player.set_volume(player.volume + 10)
                 await interaction.response.send_message(f"Volume set to {player.volume}%")
 
             @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
             async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 await player.set_volume(player.volume - 10)
                 await interaction.response.send_message(f"Volume set to {player.volume}%")
 
