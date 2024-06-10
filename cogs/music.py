@@ -251,7 +251,10 @@ class Music(commands.Cog, name="music"):
                             color=discord.Colour.red()
                         )
                         await context.send(embed=embed)
-                        pass
+                        c = await conn.cursor()
+                        await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                        await conn.commit()
+                        return
                     try:
                         await channel.delete()
                     except discord.Forbidden:
@@ -262,7 +265,10 @@ class Music(commands.Cog, name="music"):
                             color=discord.Colour.red()
                         )
                         await context.send(embed=embed)
-                        pass
+                        c = await conn.cursor()
+                        await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                        await conn.commit()
+                        return
 
                 else:
                     embed = discord.Embed(
