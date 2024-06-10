@@ -729,12 +729,22 @@ class SteamTools(commands.Cog, name="steamtools"):
             embed.add_field(name="🔗 Steam Info",
                             value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})\nSteam ID: `{data['platforms']['steam']}`\nNew Steam ID: `{data['new_steam_id']}`\nSteam ID 64: `{data['steam_id_64']}`",
                             inline=False)
-            embed.add_field(name="🔫 CSGO Info",
-                            value=f"Region: `{data['games']['csgo']['region']}`\nSkill Level: `{data['games']['csgo']['skill_level']}`\nFaceit ELO: `{data['games']['csgo']['faceit_elo']}`",
-                            inline=False)
-            embed.add_field(name="🎮 CS2 Info",
-                            value=f"Region: `{data['games']['cs2']['region']}`\nSkill Level: `{data['games']['cs2']['skill_level']}`\nFaceit ELO: `{data['games']['cs2']['faceit_elo']}`",
-                            inline=False)
+            if 'cs2' in data['games']:
+                embed.add_field(name="🎮 CS2 Info",
+                                value=f"Region: `{data['games']['cs2']['region']}`\nSkill Level: `{data['games']['cs2']['skill_level']}`\nFaceit ELO: `{data['games']['cs2']['faceit_elo']}`",
+                                inline=False)
+            else:
+                embed.add_field(name="🎮 CS2 Info",
+                                value="No CS2 information available.",
+                                inline=False)
+            if 'csgo' in data['games']:
+                embed.add_field(name="🔫 CSGO Info",
+                                value=f"Region: `{data['games']['csgo']['region']}`\nSkill Level: `{data['games']['csgo']['skill_level']}`\nFaceit ELO: `{data['games']['csgo']['faceit_elo']}`",
+                                inline=False)
+            else:
+                embed.add_field(name="🔫 CSGO Info",
+                                value="No CSGO information available.",
+                                inline=False)
             embed.add_field(name="👥 Friends", value=", ".join(friend_links) + " and more...",
                             inline=False)  # Display only first 5 friends
             embed.set_footer(text=f"🔗 Profile URL: https://www.faceit.com/en/players/{data['nickname']}")
