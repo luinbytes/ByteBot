@@ -108,32 +108,28 @@ class Music(commands.Cog, name="music"):
                 self.bot = bot
                 self.wavelink = wavelink
 
-            async def play_music(self, interaction: discord.Interaction, guild_id, query):
+            async def play_music(self, guild_id, query):
                 print("play_music method called")  # Debugging print statement
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
                 query = query.strip('<>')
-                destination = context.author.voice.channel
+                destination = self.user.voice.channel
                 try:
                     tracks: wavelink.Search = await wavelink.Playable.search(query)
                     if not tracks:
-                        interaction.response.send_message("No results found.", ephemeral=True)
                         return None
                 except LavalinkLoadException:
-                    interaction.response.send_message("An error occurred while searching for the song.", ephemeral=True)
                     return None
 
-                if not context.guild.voice_client:
+                if not self.bot.get_guild(guild_id).voice_client:
                     await destination.connect(cls=wavelink.Player, self_deaf=True)
 
                 player: wavelink.Player = cast(
-                    wavelink.Player, context.guild.voice_client
+                    wavelink.Player, self.bot.get_guild(guild_id).voice_client
                 )
 
                 player.autoplay = wavelink.AutoPlayMode.partial
                 track: wavelink.Playable = tracks[0]
                 await player.queue.put_wait(track)
-                interaction.response.send_message(f"Added {track.title} by {track.author} to the queue.",
-                                                  ephemeral=True)
 
             async def pause_music(self, guild_id):
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
