@@ -135,11 +135,15 @@ class Music(commands.Cog, name="music"):
                 await player.disconnect()
 
             async def on_submit(self, interaction: discord.Interaction):
-                print(interaction.message.content)
-                await interaction.response.send_message("Searching for the song...")
-                query = interaction.message.content
-                print(query)
-                await self.play_music(interaction.guild_id, query)
+                print("on_submit method called")  # Debugging print statement
+                try:
+                    print("Before sending message")  # Debugging print statement
+                    await interaction.response.send_message("Searching for the song...")
+                    query = interaction.message.content
+                    print(f"Query: {query}")  # Debugging print statement
+                    await self.view.play_music(interaction.guild_id, query)
+                except Exception as e:
+                    print(f"Exception in on_submit: {e}")  # Debugging print statement
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
