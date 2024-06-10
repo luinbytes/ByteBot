@@ -110,7 +110,10 @@ class Music(commands.Cog, name="music"):
 
             async def play_music(self, guild_id, query):
                 logging.log(logging.INFO, f"Playing {query}")
-                player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 query = query.strip('<>')
                 destination = self.user.voice.channel
                 try:
@@ -122,11 +125,6 @@ class Music(commands.Cog, name="music"):
 
                 if not self.bot.get_guild(guild_id).voice_client:
                     await destination.connect(cls=wavelink.Player, self_deaf=True)
-
-                player: wavelink.Player = cast(
-                    wavelink.Player,
-                    context.guild.voice_client
-                )
 
                 player.autoplay = wavelink.AutoPlayMode.partial
                 track: wavelink.Playable = tracks[0]
