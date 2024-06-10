@@ -188,7 +188,7 @@ class Music(commands.Cog, name="music"):
             url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
         embed.add_field(name="Now Playing:", value="Nothing", inline=False)
         embed.set_footer(text="ByteBot DJ")
-        buttons = MusicButtons(context.author)
+        buttons = MusicButtons(context.author, self.bot)
         await channel.send(embed=embed, view=buttons)
 
         # grab the message id of the music control embed so its easily editable in the future
