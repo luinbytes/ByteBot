@@ -99,7 +99,7 @@ class Music(commands.Cog, name="music"):
                 self.value = "skip"
                 self.stop()
 
-            @discord.ui.button(label=" ", style=discord.ButtonStyle.primary, disabled=True)
+            @discord.ui.button(label="⠀", style=discord.ButtonStyle.primary, disabled=True)
             async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
                 pass
 
