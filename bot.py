@@ -255,13 +255,8 @@ class DiscordBot(commands.Bot):
                         await self.guild_prefix(guild_id, '>')
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
 
-        self.wavelink = await self.wavelink.initiate_node(
-            host='lavalink',
-            port=2333,
-            password='youshallnotpass',
-            identifier='MAIN',
-            region='us_central'
-        )
+        self.wavelink = await self.wavelink.add_node(host='127.0.0.1', port=2333, password='youshallnotpass',
+                                                     identifier='MAIN', region='us_central')
 
     async def on_message(self, message: discord.Message) -> None:
         """
