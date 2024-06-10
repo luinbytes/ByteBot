@@ -246,21 +246,23 @@ class Music(commands.Cog, name="music"):
                     if channel is None:
                         embed = discord.Embed(
                             title="Error",
-                            description="The music channel does not exist.",
+                            description="The music channel does not exist. Records have still been removed from the "
+                                        "database.",
                             color=discord.Colour.red()
                         )
                         await context.send(embed=embed)
-                        return
+                        pass
                     try:
                         await channel.delete()
                     except discord.Forbidden:
                         embed = discord.Embed(
                             title="Error",
-                            description="I do not have permission to delete the music channel.",
+                            description="I do not have permission to delete the music channel. Records have still "
+                                        "been removed from the database.",
                             color=discord.Colour.red()
                         )
                         await context.send(embed=embed)
-                        return
+                        pass
 
                 else:
                     embed = discord.Embed(
