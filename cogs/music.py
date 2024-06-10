@@ -265,10 +265,14 @@ class Music(commands.Cog, name="music"):
                 else:
                     embed = discord.Embed(
                         title="Error",
-                        description="Music bot is not setup in this server.",
+                        description="Music bot is not setup in this server. Records have still been removed from the "
+                                    "database.",
                         color=discord.Colour.red()
                     )
                     await context.send(embed=embed)
+                    c = await conn.cursor()
+                    await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                    await conn.commit()
                     return
 
                 embed = discord.Embed(
