@@ -162,6 +162,21 @@ class Music(commands.Cog, name="music"):
         try:
             async with aiosqlite.connect(DB_PATH) as conn:
                 c = await conn.cursor()
+                channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                             (guild_id,))
+                channel_id = await channel_id.fetchone()
+                if channel_id:
+                    channel = context.guild.get_channel(channel_id[0])
+                    await channel.delete()
+                else:
+                    embed = discord.Embed(
+                        title="Error",
+                        description="Music bot is not setup in this server.",
+                        color=discord.Colour.red()
+                    )
+                    await context.send(embed=embed)
+                    return
+                
                 await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
                 await conn.commit()
                 embed = discord.Embed(
