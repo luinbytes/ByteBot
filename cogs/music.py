@@ -90,51 +90,6 @@ class Music(commands.Cog, name="music"):
                 self.player = None
                 self.wavelink = wavelink
 
-            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
-            async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
-                if self.player.get_player(interaction.guild_id).queue:
-                    await self.player
-
-            @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
-            async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
-                if player.set_pause(True):
-                    await self.resume_music(interaction.guild_id)
-                else:
-                    await self.pause_music(interaction.guild_id)
-
-            @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
-            async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
-                await self.skip_music(interaction.guild_id)
-
-            @discord.ui.button(label="⠀", style=discord.ButtonStyle.primary, disabled=True)
-            async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
-                pass
-
-            @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
-            async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
-                await player.set_volume(player.volume + 10)
-
-            @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
-            async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player: wavelink.Player = context.guild.voice_client
-                await player.set_volume(player.volume - 10)
-
-            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
-            async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
-                await interaction.response.send_modal(MusicSearchModal(self, self.wavelink))
-
-        class MusicSearchModal(discord.ui.Modal):
-            def __init__(self, view, bot):
-                super().__init__(title="Search for a song")
-                self.view = view
-                self.bot = bot
-                self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
-                self.add_item(self.placeholder)  # Add the TextInput component to the modal
-
             async def play_music(self, guild_id, query):
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
                 query = query.strip('<>')
@@ -179,6 +134,51 @@ class Music(commands.Cog, name="music"):
                     await interaction.response.send_message(f"Playing {track.title} by {track.author}.", ephemeral=True)
                 else:
                     await interaction.response.send_message("No results found.", ephemeral=True)
+
+            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
+            async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
+                player: wavelink.Player = context.guild.voice_client
+                if self.player.get_player(interaction.guild_id).queue:
+                    await self.player
+
+            @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
+            async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
+                player: wavelink.Player = context.guild.voice_client
+                if player.set_pause(True):
+                    await self.resume_music(interaction.guild_id)
+                else:
+                    await self.pause_music(interaction.guild_id)
+
+            @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
+            async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
+                player: wavelink.Player = context.guild.voice_client
+                await self.skip_music(interaction.guild_id)
+
+            @discord.ui.button(label="⠀", style=discord.ButtonStyle.primary, disabled=True)
+            async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
+                pass
+
+            @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
+            async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
+                player: wavelink.Player = context.guild.voice_client
+                await player.set_volume(player.volume + 10)
+
+            @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
+            async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
+                player: wavelink.Player = context.guild.voice_client
+                await player.set_volume(player.volume - 10)
+
+            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
+            async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
+                await interaction.response.send_modal(MusicSearchModal(self, self.wavelink))
+
+        class MusicSearchModal(discord.ui.Modal):
+            def __init__(self, view, bot):
+                super().__init__(title="Search for a song")
+                self.view = view
+                self.bot = bot
+                self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
+                self.add_item(self.placeholder)  # Add the TextInput component to the modal
 
         embed = discord.Embed(
             title="🎶 ByteBot DJ",
