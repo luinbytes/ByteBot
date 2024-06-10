@@ -134,6 +134,7 @@ class Music(commands.Cog, name="music"):
                 self.bot = bot
                 self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
                 self.add_item(self.placeholder)  # Add the TextInput component to the modal
+                self.wavelink = wavelink
 
             async def connect_to_channel(self, channel):
                 player = self.wavelink.get_player(channel.guild.id)
