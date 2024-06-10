@@ -178,7 +178,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
-                modal = MusicSearchModal(self.wavelink)
+                modal = MusicSearchModal(self, self.bot)
                 await interaction.response.send_modal(modal)
 
         class MusicSearchModal(discord.ui.Modal):
