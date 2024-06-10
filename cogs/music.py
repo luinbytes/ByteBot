@@ -126,9 +126,9 @@ class Music(commands.Cog, name="music"):
                 if not context.guild.voice_client:
                     await destination.connect(cls=wavelink.Player, self_deaf=True)
 
-                self.player.autoplay = wavelink.AutoPlayMode.partial
+                # self.player.autoplay = self.wavelink.AutoPlayMode.partial
                 track: wavelink.Playable = tracks[0]
-                await player.queue.put_wait(track)
+                await self.player.queue.put_wait(track)
 
             async def pause_music(self, guild_id):
                 player: wavelink.Player = cast(
