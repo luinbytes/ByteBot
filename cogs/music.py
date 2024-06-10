@@ -89,7 +89,7 @@ class Music(commands.Cog, name="music"):
                 self.value = "previous"
                 self.stop()
 
-            @discord.ui.button(label="⏯️", style=discord.ButtonStyle.primary)
+            @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
                 self.value = "pause"
                 self.stop()
@@ -99,16 +99,12 @@ class Music(commands.Cog, name="music"):
                 self.value = "skip"
                 self.stop()
 
-            @discord.ui.button(label="⠀", style=discord.ButtonStyle.primary, disabled=True)
-            async def spacer(self, button: discord.ui.Button, interaction: discord.Interaction):
-                pass
-
-            @discord.ui.button(label="🔊+", style=discord.ButtonStyle.primary)
+            @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
                 self.value = "volume_up"
                 self.stop()
 
-            @discord.ui.button(label="🔊-", style=discord.ButtonStyle.primary)
+            @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
             async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
                 self.value = "volume_down"
                 self.stop()
@@ -146,6 +142,39 @@ class Music(commands.Cog, name="music"):
             embed = discord.Embed(
                 title="Error",
                 description="Music bot is already setup in this server.",
+                color=discord.Colour.red()
+            )
+            await context.send(embed=embed)
+            pass
+
+    @commands.hybrid_command(
+        name="removemusic",
+        description="Remove the music bot setup from the server.",
+        aliases=["deletemusic", "rmmusic", "delmusic"]
+    )
+    @commands.has_permissions(manage_channels=True)
+    async def remove_music(self, context: Context) -> None:
+        await context.defer()
+        # grab the guild id
+        guild_id = context.guild.id
+
+        # remove the music channel
+        try:
+            async with aiosqlite.connect(DB_PATH) as conn:
+                c = await conn.cursor()
+                await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="Success",
+                    description="Music bot removed successfully.",
+                    color=discord.Colour.green()
+                )
+                embed.set_footer(text=f"Requested by {context.author.display_name}", icon_url=context.author.avatar.url)
+                await context.send(embed=embed)
+        except aiosqlite.IntegrityError:
+            embed = discord.Embed(
+                title="Error",
+                description="Music bot is not setup in this server.",
                 color=discord.Colour.red()
             )
             await context.send(embed=embed)
