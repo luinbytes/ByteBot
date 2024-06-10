@@ -91,15 +91,13 @@ class Music(commands.Cog, name="music"):
                 self.add_item(self.placeholder)  # Add the TextInput component to the modal
 
             async def on_submit(self, interaction: discord.Interaction):
-                print("on_submit method called")  # Debugging print statement
                 try:
-                    print("Before sending message")  # Debugging print statement
                     await interaction.response.send_message("Searching for the song...")
                     query = interaction.message.content
-                    print(f"Query: {query}")  # Debugging print statement
                     await self.view.play_music(interaction.guild_id, query)
+                    await interaction.response.edit_message("Song added to the queue.")
                 except Exception as e:
-                    print(f"Exception in on_submit: {e}")  # Debugging print statement
+                    await interaction.response.send_message(f"An error occurred: {e}")
 
         # send music control embed to the channel
         class MusicButtons(discord.ui.View):
