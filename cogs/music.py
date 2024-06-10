@@ -105,6 +105,7 @@ class Music(commands.Cog, name="music"):
                 super().__init__()
                 self.user = user
                 self.player = None
+                self.bot = bot
                 self.wavelink = wavelink
 
             async def play_music(self, interaction: discord.Interaction, guild_id, query):
