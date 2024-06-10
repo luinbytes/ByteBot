@@ -108,17 +108,12 @@ class Music(commands.Cog, name="music"):
                 self.wavelink = self.bot.wavelink
 
             async def play_music(self, guild_id, query):
-                embed = discord.Embed(
-                    title="Now Playing:",
-                    description=query,
-                    color=discord.Colour.purple()
-                )
-                await channel.send(embed=embed)
                 logging.log(logging.INFO, f"Playing {query}")
                 player: wavelink.Player = cast(
                     wavelink.Player,
                     context.guild.voice_client
                 )
+                self.player = player
                 query = query.strip('<>')
                 destination = self.user.voice.channel
                 try:
@@ -128,10 +123,10 @@ class Music(commands.Cog, name="music"):
                 except LavalinkLoadException:
                     return None
 
-                if not self.bot.get_guild(guild_id).voice_client:
+                if not context.guild.voice_client:
                     await destination.connect(cls=wavelink.Player, self_deaf=True)
 
-                player.autoplay = self.wavelink.AutoPlayMode.partial
+                self.player.autoplay = wavelink.AutoPlayMode.partial
                 track: wavelink.Playable = tracks[0]
                 await player.queue.put_wait(track)
 
