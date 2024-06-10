@@ -135,7 +135,8 @@ class Music(commands.Cog, name="music"):
                 await player.disconnect()
 
             async def on_submit(self, interaction: discord.Interaction):
-                await interaction.response.send_message("Searching for the song...", ephemeral=True)
+                print(interaction.message.content)
+                await interaction.response.send_message("Searching for the song...")
                 query = interaction.message.content
                 print(query)
                 await self.play_music(interaction.guild_id, query)
@@ -149,10 +150,7 @@ class Music(commands.Cog, name="music"):
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
                 player: wavelink.Player = context.guild.voice_client
-                if player.set_pause(True):
-                    await self.resume_music(interaction.guild_id)
-                else:
-                    await self.pause_music(interaction.guild_id)
+                await self.pause_music(interaction.guild_id)
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
