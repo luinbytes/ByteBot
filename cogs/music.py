@@ -123,9 +123,6 @@ class Music(commands.Cog, name="music"):
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
                 await player.disconnect()
 
-            async def interaction_check(self, interaction: discord.Interaction) -> bool:
-                return interaction.user == self.view.user
-
             async def on_submit(self, interaction: discord.Interaction):
                 await interaction.response.send_message("Searching for the song...", ephemeral=True)
                 query = interaction.message.content
