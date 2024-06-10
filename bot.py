@@ -7,6 +7,7 @@ import sys
 
 import aiosqlite
 import discord
+import wavelink
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
@@ -141,7 +142,7 @@ class DiscordBot(commands.Bot):
         self.logger = logger
         self.config = config
         self.database = None
-        self.wavelink = None
+        self.wavelink = wavelink.Lavalink(bot=self, password='youshallnotpass', loop=self.loop)
 
     async def guild_prefix(self, guild_id, prefix=None):
         async with aiosqlite.connect(DB_PATH) as db:
