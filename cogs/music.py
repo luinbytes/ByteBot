@@ -127,25 +127,16 @@ class Music(commands.Cog, name="music"):
             async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
                 await interaction.response.send_modal(MusicSearchModal(self, self.wavelink))
 
-        class MusicSearchModal(discord.ui.Modal):
-            def __init__(self, view, bot):
-                super().__init__(title="Search for a song")
-                self.view = view
-                self.bot = bot
-                self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
-                self.add_item(self.placeholder)  # Add the TextInput component to the modal
-                self.wavelink = wavelink
-
             async def connect_to_channel(self, channel):
-                player = self.wavelink.get_player(channel.guild.id)
+                player: wavelink.Player = context.guild.voice_client
                 await player.connect(channel.id)
 
             async def disconnect_from_channel(self, guild_id):
-                player = self.wavelink.get_player(guild_id)
+                player: wavelink.Player = context.guild.voice_client
                 await player.disconnect()
 
             async def play_music(self, guild_id, query):
-                player = self.wavelink.get_player(guild_id)
+                player: wavelink.Player = context.guild.voice_client
                 query = query.strip('<>')
                 if not player.is_connected:
                     await self.connect_to_channel(self.channel)
@@ -158,16 +149,24 @@ class Music(commands.Cog, name="music"):
                 return track[0]
 
             async def pause_music(self, guild_id):
-                player = self.wavelink.get_player(guild_id)
+                player: wavelink.Player = context.guild.voice_client
                 await player.set_pause(True)
 
             async def resume_music(self, guild_id):
-                player = self.wavelink.get_player(guild_id)
+                player: wavelink.Player = context.guild.voice_client
                 await player.set_pause(False)
 
             async def skip_music(self, guild_id):
-                player = self.wavelink.get_player(guild_id)
+                player: wavelink.Player = context.guild.voice_client
                 await player.stop()
+
+        class MusicSearchModal(discord.ui.Modal):
+            def __init__(self, view, bot):
+                super().__init__(title="Search for a song")
+                self.view = view
+                self.bot = bot
+                self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
+                self.add_item(self.placeholder)  # Add the TextInput component to the modal
 
             async def interaction_check(self, interaction: discord.Interaction) -> bool:
                 return interaction.user == self.view.user
