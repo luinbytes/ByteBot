@@ -184,7 +184,7 @@ class Music(commands.Cog, name="music"):
                 await interaction.response.send_message(f"Volume set to {player.volume}%")
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
-            async def search(self, button: discord.ui.Button, interaction: discord.Interaction):
+            async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
         embed = discord.Embed(
