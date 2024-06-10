@@ -93,6 +93,7 @@ class Music(commands.Cog, name="music"):
                 self.wavelink = wavelink
 
             async def play_music(self, interaction: discord.Interaction, guild_id, query):
+                print("play_music method called")  # Debugging print statement
                 player: wavelink.Player = self.bot.wavelink.get_player(guild_id)
                 query = query.strip('<>')
                 destination = context.author.voice.channel
@@ -177,7 +178,8 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, item: discord.ui.Item):
-                await interaction.response.send_modal(MusicSearchModal(self, self.wavelink))
+                modal = MusicSearchModal(self, self.wavelink)
+                await interaction.response.send_modal(modal)
 
         class MusicSearchModal(discord.ui.Modal):
             def __init__(self, view, bot):
