@@ -1,13 +1,18 @@
 import logging
+import os
 from datetime import timedelta
-from typing import cast
 
+import aiosqlite
 import discord
 import wavelink
-from discord import app_commands, Message
 from discord.ext import commands
 from discord.ext.commands import Context
-from wavelink.exceptions import LavalinkLoadException
+
+# Ensure database directory exists
+DATABASE_DIR = "database"
+if not os.path.exists(DATABASE_DIR):
+    os.makedirs(DATABASE_DIR)
+DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 
 class Music(commands.Cog, name="music"):
@@ -58,451 +63,86 @@ class Music(commands.Cog, name="music"):
             await player.disconnect()
 
     @commands.hybrid_command(
-        name="play",
-        description="Play a song.",
-        usage="play <song>",
-        aliases=["search"]
+        name="setupmusic",
+        description="Setup the music bot. Creates a text channel for music bot controls.",
+
     )
-    @app_commands.describe(
-        song="The song to search for and play."
-    )
-    async def play(self, context, *, song: str) -> None:
+    @commands.has_permissions(manage_channels=True)
+    async def setup_music(self, context: Context) -> None:
+        await context.defer()
+        # grab the guild id
+        guild_id = context.guild.id
+
+        # create a text channel
+        channel = await context.guild.create_text_channel("music-control")
+        channel_id = channel.id
+
+        # send music control embed to the channel
+        class MusicButtons(discord.ui.View):
+            def __init__(self, user):
+                super().__init__()
+                self.user = user
+                self.value = None
+
+            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
+            async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.value = "previous"
+                self.stop()
+
+            @discord.ui.button(label="⏯️", style=discord.ButtonStyle.primary)
+            async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.value = "pause"
+                self.stop()
+
+            @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
+            async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.value = "skip"
+                self.stop()
+
+            @discord.ui.button(label="🔊+", style=discord.ButtonStyle.primary)
+            async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.value = "volume_up"
+                self.stop()
+
+            @discord.ui.button(label="🔊-", style=discord.ButtonStyle.primary)
+            async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.value = "volume_down"
+                self.stop()
+
+        embed = discord.Embed(
+            title="🎶 ByteBot DJ",
+            description="Welcome to ByteBot DJ! Use the buttons below to control the music bot.",
+            color=discord.Colour.pink()
+        )
+        embed.set_footer(text="ByteBot DJ")
+        buttons = MusicButtons(context.author)
+        await channel.send(embed=embed, view=buttons)
+
+        # grab the message id of the music control embed so its easily editable in the future
+        message_id = channel.last_message_id
+
+        # store these values in the database in the GuildMusicChannels table with aiosqlite
         try:
-            embed = discord.Embed(
-                title="Searching",
-                description="Searching for the song...",
-                color=discord.Colour.green()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-
-            if not context.author.voice or not context.author.voice.channel:
+            async with aiosqlite.connect(DB_PATH) as conn:
+                c = await conn.cursor()
+                await c.execute("INSERT INTO GuildMusicChannels (guild_id, channel_id, message_id) VALUES (?, ?, ?)",
+                                (guild_id, channel_id, message_id))
+                await conn.commit()
                 embed = discord.Embed(
-                    title="Error",
-                    description="You are not connected to a voice channel.",
-                    color=discord.Colour.red()
-                )
-                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                return await context.send(embed=embed)
-
-            if not context.author.voice.channel.permissions_for(
-                    context.guild.me).connect or not context.author.voice.channel.permissions_for(
-                context.guild.me).speak:
-                embed = discord.Embed(
-                    title="Error",
-                    description="I do not have permission to connect or speak in your voice channel.",
-                    color=discord.Colour.red()
-                )
-                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                return await context.send(embed=embed)
-
-            self.channel = context.channel
-            destination = context.author.voice.channel
-
-            try:
-                tracks: wavelink.Search = await wavelink.Playable.search(song)
-                if not tracks:
-                    embed = discord.Embed(
-                        title="Error",
-                        description="No tracks found.",
-                        color=discord.Colour.red()
-                    )
-                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                    return await context.send(embed=embed)
-            except LavalinkLoadException:
-                embed = discord.Embed(
-                    title="Error",
-                    description="An error occurred while loading the track.",
-                    color=discord.Colour.red()
-                )
-                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                return await context.send(embed=embed)
-
-            if not context.guild.voice_client:
-                await destination.connect(cls=wavelink.Player, self_deaf=True)
-
-            player: wavelink.Player = cast(
-                wavelink.Player,
-                context.guild.voice_client
-            )
-
-            player.autoplay = wavelink.AutoPlayMode.partial
-            track: wavelink.Playable = tracks[0]
-
-            await player.queue.put_wait(track)
-
-            embed = discord.Embed(
-                title="Queued",
-                description=f"**{track.title} - {track.author}**",
-                color=discord.Colour.green()
-            )
-            if track.artwork:
-                embed.set_thumbnail(url=track.artwork)
-            embed.add_field(name="Duration:", value=str(timedelta(milliseconds=track.length)), inline=True)
-            embed.add_field(name="Queue", value=f"{len(player.queue)} songs", inline=True)
-            embed.set_footer(text=f"Source: {track.source.capitalize()}", icon_url=track.artwork)
-            await context.send(embed=embed)
-
-            if not player.playing:
-                await player.play(player.queue.get(), volume=self.volume)
-        except Exception as e:
-            print(f"An error occurred in the play function: {e}")
-
-    @commands.hybrid_command(
-        name="stop",
-        description="Stop the music.",
-        usage="stop",
-        aliases=["leave"]
-    )
-    async def stop(self, context: commands.Context) -> Message:
-        player: wavelink.Player = context.guild.voice_client
-        if not context.author.voice:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).connect:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to connect to your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).speak:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to speak in your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.guild.voice_client:
-            embed = discord.Embed(
-                title="Error",
-                description="I am not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        self.channel = None
-        await player.disconnect()
-
-        embed = discord.Embed(
-            title="Stopped",
-            description="The music has been stopped.",
-            color=discord.Colour.green()
-        )
-        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-        await context.send(embed=embed)
-
-    @commands.hybrid_command(
-        name="pause",
-        description="Pause the music.",
-        usage="pause"
-    )
-    async def pause(self, context: commands.Context) -> Message:
-        player: wavelink.Player = context.guild.voice_client
-        if not context.author.voice:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).connect:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to connect to your voice channel.",
-                color=discord.Colour.red()
-            )
-
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).speak:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to speak in your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.guild.voice_client:
-            embed = discord.Embed(
-                title="Error",
-                description="I am not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        await player.pause(not player.paused)
-
-        if player.pause:
-            embed = discord.Embed(
-                title="Paused",
-                description="The music has been paused.",
-                color=discord.Colour.green()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-        else:
-            embed = discord.Embed(
-                title="Resumed",
-                description="The music has been resumed.",
-                color=discord.Colour.green()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-
-        await context.send(embed=embed)
-
-    @commands.hybrid_command(
-        name="skip",
-        description="Skip the current song.",
-        usage="skip",
-        aliases=["next"]
-    )
-    async def skip(self, context: commands.Context) -> None:
-        player: wavelink.Player = context.guild.voice_client
-        if not context.author.voice:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).connect:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to connect to your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).speak:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to speak in your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.guild.voice_client:
-            embed = discord.Embed(
-                title="Error",
-                description="I am not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if player.playing:
-            if player.queue:
-                await player.skip()
-                embed = discord.Embed(
-                    title="Skipped",
-                    description="The current song has been skipped.",
+                    title="Success",
+                    description="Music bot setup successfully.",
                     color=discord.Colour.green()
                 )
-                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                embed.set_footer(text=f"Requested by {context.author.display_name}", icon_url=context.author.avatar.url)
                 await context.send(embed=embed)
-            else:
-                await player.stop(force=False)
-                await player.disconnect()
-                embed = discord.Embed(
-                    title="Skipped",
-                    description="The song has been skipped but theres no other songs in the queue.",
-                    color=discord.Colour.green()
-                )
-                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                await context.send(embed=embed)
-        else:
+        except aiosqlite.IntegrityError:
             embed = discord.Embed(
                 title="Error",
-                description="There is no music playing.",
+                description="Music bot is already setup in this server.",
                 color=discord.Colour.red()
             )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
-
-    @commands.hybrid_command(
-        name="volume",
-        description="Change the volume.",
-        usage="volume <volume>",
-        aliases=["vol"]
-    )
-    @app_commands.describe(
-        volume="The volume to set."
-    )
-    async def volume(self, context: commands.Context, volume: int) -> None:
-        player: wavelink.Player = context.guild.voice_client
-        if not context.author.voice:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel:
-            embed = discord.Embed(
-                title="Error",
-                description="You are not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).connect:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to connect to your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.author.voice.channel.permissions_for(context.guild.me).speak:
-            embed = discord.Embed(
-                title="Error",
-                description="I do not have permission to speak in your voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if not context.guild.voice_client:
-            embed = discord.Embed(
-                title="Error",
-                description="I am not connected to a voice channel.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        if volume < 0 or volume > 100:
-            embed = discord.Embed(
-                title="Error",
-                description="The volume must be between 0 and 100.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            return await context.send(embed=embed)
-
-        self.volume = volume
-        await player.set_volume(volume)
-        embed = discord.Embed(
-            title="Volume",
-            description=f"The volume has been set to {volume}.",
-            color=discord.Colour.green()
-        )
-        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-        await context.send(embed=embed)
-
-    @commands.hybrid_command(
-        name="nowplaying",
-        description="View the current song.",
-        usage="nowplaying",
-        aliases=["np"]
-    )
-    async def nowplaying(self, context: Context) -> None:
-        player: wavelink.Player = context.guild.voice_client
-        if player.playing:
-            track = player.current
-            track_duration = str(timedelta(milliseconds=track.length))
-
-            embed = discord.Embed(
-                title="Now Playing",
-                description=f"**{track.title} - {track.author}**",
-                color=discord.Colour.green()
-            )
-            if track.artwork:
-                embed.set_thumbnail(url=track.artwork)
-            embed.add_field(name="Duration:", value=track_duration, inline=True)
-            embed.add_field(name="Queue", value=f"{len(player.queue)} songs", inline=True)
-            embed.set_footer(text=f"Source: {track.source.capitalize()}", icon_url=track.artwork)
-            await context.send(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="Error",
-                description="There is no music playing.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-
-    @commands.hybrid_command(
-        name="queue",
-        description="View the queue.",
-        usage="queue",
-        aliases=["q"]
-    )
-    async def queue(self, context: Context) -> None:
-        player: wavelink.Player = context.guild.voice_client
-        if player.queue:
-            embed = discord.Embed(
-                title="Queue",
-                description="",
-                color=discord.Colour.green()
-            )
-            for index, track in enumerate(player.queue):
-                track_duration = str(timedelta(milliseconds=track.length))
-                if '.' in track_duration:
-                    track_duration = track_duration.split('.')[0]
-                embed.add_field(name=f"#{index + 1} >> {track.title} - {track.author}",
-                                value=f"Duration: {track_duration}", inline=False)
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="Error",
-                description="There are no songs in the queue.",
-                color=discord.Colour.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
+            pass
 
 
 async def setup(bot) -> None:
