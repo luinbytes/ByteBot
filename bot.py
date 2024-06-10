@@ -7,11 +7,9 @@ import sys
 
 import aiosqlite
 import discord
-import wavelink
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
-from wavelink import NodeStatus
 
 from database import DatabaseManager
 
@@ -378,17 +376,17 @@ class DiscordBot(commands.Bot):
         """
         Connects to Wavelink nodes.
         """
-        node: wavelink.Node = self.wavelink.Node(
-            uri="http://lavalink:2333",
-            password="youshallnotpass",
-            retries=25
-        )
-        if await self.wavelink.Pool.connect(client=self, nodes=[node]):
+        try:
+            await self.wavelink.initiate_node(
+                host='lavalink',
+                port=2333,
+                password='youshallnotpass',
+                identifier='MAIN',
+                region='us_central'
+            )
             self.logger.log(logging.INFO, "Connected to Wavelink nodes")
-        else:
-            if node.status == NodeStatus.DISCONNECTED:
-                self.logger.log(logging.CRITICAL, "Disconnected from Wavelink nodes")
-                await node._session.close()
+        except Exception as e:
+            self.logger.log(logging.CRITICAL, f"Failed to connect to Wavelink nodes: {e}")
 
 
 load_dotenv()
