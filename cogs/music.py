@@ -94,7 +94,7 @@ class Music(commands.Cog, name="music"):
                 try:
                     query = interaction.message.content
                     await self.view.play_music(interaction.guild_id, query)
-                    await interaction.response.edit_message("Song added to the queue.")
+                    await interaction.response.edit_message(content="Song added to the queue.")
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {e}")
 
