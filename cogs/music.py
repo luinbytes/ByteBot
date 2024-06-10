@@ -172,20 +172,6 @@ class Music(commands.Cog, name="music"):
         # grab the guild id
         guild_id = context.guild.id
 
-        try:
-            async with aiosqlite.connect(DB_PATH) as conn:
-                c = await conn.cursor()
-                await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-                await conn.commit()
-        except aiosqlite.IntegrityError:
-            embed = discord.Embed(
-                title="Error",
-                description="Music bot is not setup in this server.",
-                color=discord.Colour.red()
-            )
-            await context.send(embed=embed)
-            return
-
         # remove the music channel
         try:
             async with aiosqlite.connect(DB_PATH) as conn:
@@ -238,6 +224,20 @@ class Music(commands.Cog, name="music"):
             )
             await context.send(embed=embed)
             pass
+
+        try:
+            async with aiosqlite.connect(DB_PATH) as conn:
+                c = await conn.cursor()
+                await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                await conn.commit()
+        except aiosqlite.IntegrityError:
+            embed = discord.Embed(
+                title="Error",
+                description="Music bot is not setup in this server.",
+                color=discord.Colour.red()
+            )
+            await context.send(embed=embed)
+            return
 
 
 async def setup(bot) -> None:
