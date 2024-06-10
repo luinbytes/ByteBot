@@ -87,12 +87,12 @@ class Music(commands.Cog, name="music"):
                 super().__init__(title="Search for a song")
                 self.view = view
                 self.bot = bot
-                self.placeholder = discord.ui.TextInput(label="Enter the song you would like to search for.")
-                self.add_item(self.placeholder)  # Add the TextInput component to the modal
+
+            response = discord.ui.TextInput(label="Search for a song", placeholder="Enter a song name or URL")
 
             async def on_submit(self, interaction: discord.Interaction):
                 try:
-                    query = interaction.message.content
+                    query = self.response.value
                     await self.view.play_music(interaction.guild_id, query)
                     await interaction.response.send_message(f"Searching for {query}...")
                 except Exception as e:
