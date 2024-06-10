@@ -255,7 +255,7 @@ class DiscordBot(commands.Bot):
                         await self.guild_prefix(guild_id, '>')
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
 
-        await self.wavelink.initiate_node(
+        self.wavelink = await self.wavelink.initiate_node(
             host='lavalink',
             port=2333,
             password='youshallnotpass',
