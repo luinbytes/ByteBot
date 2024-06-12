@@ -112,9 +112,27 @@ class Music(commands.Cog, name="music"):
                 logging.log(logging.INFO, f"Playing {query}")
                 query = query.strip('<>')
                 destination = context.author.voice.channel
+
+                if not context.author.voice or not context.author.voice.channel:
+                    # Handle the case when the user is not connected to a voice channel
+                    return
+
+                if not context.author.voice.channel.permissions_for(
+                        context.guild.me).connect or not context.author.voice.channel.permissions_for(
+                    context.guild.me).speak:
+                    # Handle the case when the bot does not have permission to connect or speak in the voice channel
+                    return
+
                 if context.guild.voice_client is None:
                     await destination.connect(cls=wavelink.Player, self_deaf=True)
-                player = wavelink.Player(context.guild.voice_client)
+
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
+
+                player.autoplay = wavelink.AutoPlayMode.partial
+
                 try:
                     tracks: wavelink.Search = await wavelink.Playable.search(query)
                     if not tracks:
@@ -125,7 +143,7 @@ class Music(commands.Cog, name="music"):
                 track: wavelink.Playable = tracks[0]
                 await player.queue.put_wait(track)
 
-                if not player.playing:
+                if not player.playing and player.queue:
                     await player.play(player.queue.get(), volume=self.volume)
 
             async def pause_music(self, guild_id):
