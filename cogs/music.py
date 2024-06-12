@@ -54,27 +54,30 @@ class Music(commands.Cog, name="music"):
                 message = await channel.fetch_message(message_id[0])
                 embed = message.embeds[0]
                 embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track_duration}", inline=False)
+                # update the album art
+                if track.artwork:
+                    embed.set_thumbnail(url=payload.track.artwork)
+                else:
+                    embed.set_thumbnail(
+                        url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
                 await message.edit(embed=embed)
 
-        # Edit the queue embed to show the queue
+        # Edit the queue embed to show the current queue
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
             guild_id = payload.player.guild.id
-            channel_id_tuple = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
-                                               (guild_id,))
-            channel_id_tuple = await channel_id_tuple.fetchone()
-            channel_id = channel_id_tuple[0]  # Extract the channel_id from the tuple
             queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             queue_id = await queue_id.fetchone()
             if queue_id:
                 channel = await self.bot.fetch_channel(channel_id)
-                message = await channel.fetch_message(queue_id[0])
-                embed = message.embeds[0]
-                embed.clear_fields()
-                embed.add_field(name="Queue:",
-                                value="\n".join([f"{i + 1}. {track.title}" for i, track in enumerate(player.queue)]),
-                                inline=False)
-                await message.edit(embed=embed)
+                queue_message = await channel.fetch_message(queue_id[0])
+                queue_embed = queue_message.embeds[0]
+                queue = player.queue
+                queue_list = []
+                for i, track in enumerate(queue):
+                    queue_list.append(f"{i + 1}. {track.title}")
+                queue_embed.description = "\n".join(queue_list)
+                await queue_message.edit(embed=queue_embed)
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackStartEventPayload) -> None:
@@ -84,22 +87,6 @@ class Music(commands.Cog, name="music"):
             return
 
         if player.queue:
-            # Update the queue embed
-            async with aiosqlite.connect(DB_PATH) as conn:
-                c = await conn.cursor()
-                guild_id = player.guild_id
-                queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-                queue_id = await queue_id.fetchone()
-                if queue_id:
-                    channel = await self.bot.fetch_channel(player.channel_id)
-                    message = await channel.fetch_message(queue_id[0])
-                    embed = message.embeds[0]
-                    embed.clear_fields()
-                    embed.add_field(name="Queue:",
-                                    value="\n".join(
-                                        [f"{i + 1}. {track.title}" for i, track in enumerate(player.queue)]),
-                                    inline=False)
-                    await message.edit(embed=embed)
             pass
         else:
             self.channel = None
