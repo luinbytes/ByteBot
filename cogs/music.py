@@ -42,7 +42,7 @@ class Music(commands.Cog, name="music"):
         # Edit the main embed to show what is currently playing
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
-            guild_id = payload.guild.id
+            guild_id = payload.player.guild.id
             message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             message_id = await message_id.fetchone()
             if message_id:
@@ -55,7 +55,7 @@ class Music(commands.Cog, name="music"):
         # Edit the queue embed to show the queue
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
-            guild_id = payload.guild.id
+            guild_id = payload.player.guild.id
             queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             queue_id = await queue_id.fetchone()
             if queue_id:
@@ -298,11 +298,11 @@ class Music(commands.Cog, name="music"):
         buttons = MusicButtons(context.author, self.bot)
 
         queue_embed = discord.Embed(
-            title="🎶 ByteBot DJ",
+            title="🎶 ByteBot DJ Current Queue:",
             description="Queue:",
             color=discord.Colour.pink()
         )
-        queue_embed.set_footer(text="ByteBot DJ")
+        queue_embed.set_footer(text="ByteBot DJ Queue")
 
         await channel.send(embed=main_embed, view=buttons)
         message_id = channel.last_message_id
