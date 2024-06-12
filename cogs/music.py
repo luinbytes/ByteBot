@@ -129,7 +129,7 @@ class Music(commands.Cog, name="music"):
                 await self.player.queue.put_wait(track)
 
                 if not player.playing:
-                    await player.play(player.queue.get(), volume=self.volume)
+                    await self.player.play(player.queue.get(), volume=self.volume)
 
             async def pause_music(self, guild_id):
                 player = wavelink.Player(context.guild.voice_client)
