@@ -252,8 +252,8 @@ class Music(commands.Cog, name="music"):
                 await player.disconnect()
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
-            async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+            async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -266,8 +266,8 @@ class Music(commands.Cog, name="music"):
                     await interaction.response.send_message(f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
-            async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+            async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -279,7 +279,8 @@ class Music(commands.Cog, name="music"):
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
-            async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
+            async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+                interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -291,7 +292,8 @@ class Music(commands.Cog, name="music"):
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
-            async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
+            async def volume_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -316,8 +318,8 @@ class Music(commands.Cog, name="music"):
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
-            async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+            async def volume_down(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
