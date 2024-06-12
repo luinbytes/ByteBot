@@ -165,7 +165,7 @@ class Music(commands.Cog, name="music"):
                 return
 
         # create a text channel
-        channel = await context.guild.create_text_channel("music-control")
+        channel = await context.guild.create_text_channel("bytebot-dj")
         await channel.set_permissions(context.guild.default_role, send_messages=True, read_messages=True,
                                       add_reactions=False)
         channel_id = channel.id
