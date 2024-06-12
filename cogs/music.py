@@ -147,17 +147,26 @@ class Music(commands.Cog, name="music"):
                     await player.play(player.queue.get(), volume=self.volume)
 
             async def pause_music(self, guild_id):
-                player = wavelink.Player(context.guild.voice_client)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 self.player = player
                 await player.pause(not player.paused)
 
             async def skip_music(self, guild_id):
-                player = wavelink.Player(context.guild.voice_client)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 self.player = player
                 await player.stop()
 
             async def connect_to_channel(self, channel):
-                player = wavelink.Player(context.guild.voice_client)
+                player: wavelink.Player = cast(
+                    wavelink.Player,
+                    context.guild.voice_client
+                )
                 self.player = player
                 await player.connect(channel.id)
 
