@@ -122,8 +122,8 @@ class Music(commands.Cog, name="music"):
                     return None
 
                 # Connect the player to the voice channel if it's not already connected
-                if not player.is_connected:
-                    await player.connect(destination.id)
+                if not context.guild.voice_client:
+                    await destination.connect(cls=wavelink.Player, self_deaf=True)
 
                 track: wavelink.Playable = tracks[0]
                 await self.player.queue.put_wait(track)
