@@ -178,16 +178,6 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player = wavelink.Player(context.guild.voice_client)
-                self.player = player
-                if self.player.get_player(interaction.guild_id).queue:
-                    await self.skip_music(interaction.guild_id)
-                    await interaction.response.send_message("Skipped to the previous song.")
-                else:
-                    await interaction.response.send_message("No previous song in the queue.")
-
-            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
-            async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -248,6 +238,10 @@ class Music(commands.Cog, name="music"):
                     await interaction.response.send_message(f"Volume set to {player.volume}%")
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {str(e)}")
+
+            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
+            async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
         embed = discord.Embed(
             title="🎶 ByteBot DJ",
