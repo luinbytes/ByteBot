@@ -43,10 +43,12 @@ class Music(commands.Cog, name="music"):
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
             guild_id = payload.player.guild.id
+            channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+            channel_id = await channel_id.fetchone()
             message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             message_id = await message_id.fetchone()
             if message_id:
-                channel = await self.bot.fetch_channel(player.channel_id)
+                channel = await self.bot.fetch_channel(channel_id)
                 message = await channel.fetch_message(message_id[0])
                 embed = message.embeds[0]
                 embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track_duration}", inline=False)
@@ -56,10 +58,12 @@ class Music(commands.Cog, name="music"):
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
             guild_id = payload.player.guild.id
+            channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+            channel_id = await channel_id.fetchone()
             queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             queue_id = await queue_id.fetchone()
             if queue_id:
-                channel = await self.bot.fetch_channel(player.channel_id)
+                channel = await self.bot.fetch_channel(channel_id)
                 message = await channel.fetch_message(queue_id[0])
                 embed = message.embeds[0]
                 embed.clear_fields()
