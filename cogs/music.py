@@ -106,6 +106,28 @@ class Music(commands.Cog, name="music"):
             self.channel = None
             await player.disconnect()
 
+            # update main and queue embeds
+            async with aiosqlite.connect(DB_PATH) as conn:
+                c = await conn.cursor()
+                guild_id = payload.player.guild.id
+                channel_id_tuple = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                                   (guild_id,))
+                channel_id_tuple = await channel_id_tuple.fetchone()
+                channel_id = channel_id_tuple[0]
+                message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                             (guild_id,))
+                message_id = await message_id.fetchone()
+                if message_id:
+                    channel = await self.bot.fetch_channel(channel_id)
+                    message = await channel.fetch_message(message_id[0])
+                    embed = message.embeds[0]
+                    embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
+                    await message.edit(embed=embed)
+                    queue_message = await channel.fetch_message(message_id[0])
+                    queue_embed = queue_message.embeds[0]
+                    queue_embed.description = "Queue:"
+                    await queue_message.edit(embed=queue_embed)
+
     @commands.hybrid_command(
         name="setupmusic",
         description="Setup the music bot. Creates a text channel for music bot controls.",
@@ -251,7 +273,7 @@ class Music(commands.Cog, name="music"):
                 )
                 await player.disconnect()
 
-            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
+            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary, row=1)
             async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.defer()
                 try:
@@ -261,11 +283,10 @@ class Music(commands.Cog, name="music"):
                     )
                     if player and player.queue:
                         await self.skip_music(interaction.guild_id)
-                        await interaction.response.send_message("Skipped to the previous song.", ephemeral=True)
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {str(e)}")
 
-            @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
+            @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green, row=1)
             async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.defer()
                 try:
@@ -274,11 +295,10 @@ class Music(commands.Cog, name="music"):
                         context.guild.voice_client
                     )
                     await player.pause(not player.paused)
-                    await interaction.response.send_message("Paused the music.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
-            @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
+            @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary, row=1)
             async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
                 interaction.response.defer()
                 try:
@@ -287,37 +307,10 @@ class Music(commands.Cog, name="music"):
                         context.guild.voice_client
                     )
                     await player.stop()
-                    await interaction.response.send_message("Skipped the song.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
-            @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
-            async def volume_up(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.defer()
-                try:
-                    player: wavelink.Player = cast(
-                        wavelink.Player,
-                        context.guild.voice_client
-                    )
-                    await player.set_volume(player.volume + 5)
-                    await interaction.response.send_message("Volume increased.", ephemeral=True)
-                    volume_global = player.volume
-                    async with aiosqlite.connect(DB_PATH) as conn:
-                        c = await conn.cursor()
-                        guild_id = player.guild.id
-                        message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
-                                                     (guild_id,))
-                        message_id = await message_id.fetchone()
-                        if message_id:
-                            channel = await self.bot.fetch_channel(channel_id)
-                            message = await channel.fetch_message(message_id[0])
-                            embed = message.embeds[0]
-                            embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
-                            await message.edit(embed=embed)
-                except Exception as e:
-                    logging.log(logging.ERROR, f"An error occurred: {str(e)}")
-
-            @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
+            @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red, row=2)
             async def volume_down(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.defer()
                 try:
@@ -339,11 +332,35 @@ class Music(commands.Cog, name="music"):
                             embed = message.embeds[0]
                             embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
                             await message.edit(embed=embed)
-                    await interaction.response.send_message("Volume decreased.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
-            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
+            @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green, row=2)
+            async def volume_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.defer()
+                try:
+                    player: wavelink.Player = cast(
+                        wavelink.Player,
+                        context.guild.voice_client
+                    )
+                    await player.set_volume(player.volume + 5)
+                    volume_global = player.volume
+                    async with aiosqlite.connect(DB_PATH) as conn:
+                        c = await conn.cursor()
+                        guild_id = player.guild.id
+                        message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                                     (guild_id,))
+                        message_id = await message_id.fetchone()
+                        if message_id:
+                            channel = await self.bot.fetch_channel(channel_id)
+                            message = await channel.fetch_message(message_id[0])
+                            embed = message.embeds[0]
+                            embed.set_field_at(1, name="Volume:", value=f"{player.volume} (Default: 10)", inline=False)
+                            await message.edit(embed=embed)
+                except Exception as e:
+                    logging.log(logging.ERROR, f"An error occurred: {str(e)}")
+
+            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple, row=3)
             async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
