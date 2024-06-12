@@ -16,6 +16,7 @@ DATABASE_DIR = "database"
 if not os.path.exists(DATABASE_DIR):
     os.makedirs(DATABASE_DIR)
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
+volume_global = 10
 
 
 class Music(commands.Cog, name="music"):
@@ -38,6 +39,35 @@ class Music(commands.Cog, name="music"):
         if '.' in track_duration:
             track_duration = track_duration.split('.')[0]
 
+        # Edit the main embed to show what is currently playing
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            guild_id = player.guild_id
+            message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+            message_id = await message_id.fetchone()
+            if message_id:
+                channel = await self.bot.fetch_channel(player.channel_id)
+                message = await channel.fetch_message(message_id[0])
+                embed = message.embeds[0]
+                embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track_duration}", inline=False)
+                await message.edit(embed=embed)
+
+        # Edit the queue embed to show the queue
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            guild_id = player.guild_id
+            queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+            queue_id = await queue_id.fetchone()
+            if queue_id:
+                channel = await self.bot.fetch_channel(player.channel_id)
+                message = await channel.fetch_message(queue_id[0])
+                embed = message.embeds[0]
+                embed.clear_fields()
+                embed.add_field(name="Queue:",
+                                value="\n".join([f"{i + 1}. {track.title}" for i, track in enumerate(player.queue)]),
+                                inline=False)
+                await message.edit(embed=embed)
+
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackStartEventPayload) -> None:
         player: wavelink.Player | None = payload.player
@@ -46,6 +76,22 @@ class Music(commands.Cog, name="music"):
             return
 
         if player.queue:
+            # Update the queue embed
+            async with aiosqlite.connect(DB_PATH) as conn:
+                c = await conn.cursor()
+                guild_id = player.guild_id
+                queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                queue_id = await queue_id.fetchone()
+                if queue_id:
+                    channel = await self.bot.fetch_channel(player.channel_id)
+                    message = await channel.fetch_message(queue_id[0])
+                    embed = message.embeds[0]
+                    embed.clear_fields()
+                    embed.add_field(name="Queue:",
+                                    value="\n".join(
+                                        [f"{i + 1}. {track.title}" for i, track in enumerate(player.queue)]),
+                                    inline=False)
+                    await message.edit(embed=embed)
             pass
         else:
             self.channel = None
@@ -94,7 +140,6 @@ class Music(commands.Cog, name="music"):
                 try:
                     query = self.response.value
                     await self.view.play_music(interaction.guild_id, query)
-                    await interaction.response.send_message(f"Searching for {query}...")
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {traceback.format_exc()}")
 
@@ -146,6 +191,8 @@ class Music(commands.Cog, name="music"):
                 if not player.playing and player.queue:
                     await player.play(player.queue.get(), volume=self.volume)
 
+                volume_global = self.volume
+
             async def pause_music(self, guild_id):
                 player: wavelink.Player = cast(
                     wavelink.Player,
@@ -185,9 +232,6 @@ class Music(commands.Cog, name="music"):
                     )
                     if player and player.queue:
                         await self.skip_music(interaction.guild_id)
-                        await interaction.response.send_message("Skipped to the previous song.")
-                    else:
-                        await interaction.response.send_message("No previous song in the queue.")
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {str(e)}")
 
@@ -199,9 +243,8 @@ class Music(commands.Cog, name="music"):
                         context.guild.voice_client
                     )
                     await player.pause(not player.paused)
-                    await interaction.response.send_message("Toggled pause on the current song.")
                 except Exception as e:
-                    await interaction.response.send_message(f"An error occurred: {str(e)}")
+                    logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -211,9 +254,8 @@ class Music(commands.Cog, name="music"):
                         context.guild.voice_client
                     )
                     await player.stop()
-                    await interaction.response.send_message("Skipped the current song.")
                 except Exception as e:
-                    await interaction.response.send_message(f"An error occurred: {str(e)}")
+                    logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -222,10 +264,10 @@ class Music(commands.Cog, name="music"):
                         wavelink.Player,
                         context.guild.voice_client
                     )
-                    await player.set_volume(player.volume + 10)
-                    await interaction.response.send_message(f"Volume set to {player.volume}%")
+                    await player.set_volume(player.volume + 5)
+                    volume_global = player.volume
                 except Exception as e:
-                    await interaction.response.send_message(f"An error occurred: {str(e)}")
+                    logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
             async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -234,36 +276,46 @@ class Music(commands.Cog, name="music"):
                         wavelink.Player,
                         context.guild.voice_client
                     )
-                    await player.set_volume(player.volume - 10)
-                    await interaction.response.send_message(f"Volume set to {player.volume}%")
+                    await player.set_volume(player.volume - 5)
+                    volume_global = player.volume
                 except Exception as e:
-                    await interaction.response.send_message(f"An error occurred: {str(e)}")
+                    logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
-        embed = discord.Embed(
+        main_embed = discord.Embed(
             title="🎶 ByteBot DJ",
             description="Welcome to ByteBot DJ! Use the buttons below to control the music bot.",
             color=discord.Colour.pink()
         )
-        embed.set_thumbnail(
+        main_embed.set_thumbnail(
             url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
-        embed.add_field(name="Now Playing:", value="Nothing", inline=False)
-        embed.set_footer(text="ByteBot DJ")
+        main_embed.add_field(name="Now Playing:", value="Nothing", inline=False)
+        main_embed.add_field(name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
+        main_embed.set_footer(text="ByteBot DJ")
         buttons = MusicButtons(context.author, self.bot)
-        await channel.send(embed=embed, view=buttons)
 
-        # grab the message id of the music control embed so its easily editable in the future
+        queue_embed = discord.Embed(
+            title="🎶 ByteBot DJ",
+            description="Queue:",
+            color=discord.Colour.pink()
+        )
+        queue_embed.set_footer(text="ByteBot DJ")
+
+        await channel.send(embed=main_embed, view=buttons)
         message_id = channel.last_message_id
+        await channel.send(embed=queue_embed)
+        queue_id = channel.last_message_id
 
         # store these values in the database in the GuildMusicChannels table with aiosqlite
         try:
             async with aiosqlite.connect(DB_PATH) as conn:
                 c = await conn.cursor()
-                await c.execute("INSERT INTO GuildMusicChannels (guild_id, channel_id, message_id) VALUES (?, ?, ?)",
-                                (guild_id, channel_id, message_id))
+                await c.execute(
+                    "INSERT INTO GuildMusicChannels (guild_id, channel_id, message_id, queue_id) VALUES (?, ?, ?, ?)",
+                    (guild_id, channel_id, message_id, queue_id))
                 await conn.commit()
                 embed = discord.Embed(
                     title="Success",
@@ -301,67 +353,15 @@ class Music(commands.Cog, name="music"):
                 channel_id = await channel_id.fetchone()
                 if channel_id:
                     channel = context.guild.get_channel(channel_id[0])
-                    if channel is None:
-                        embed = discord.Embed(
-                            title="Error",
-                            description="The music channel does not exist. Records have still been removed from the "
-                                        "database.",
-                            color=discord.Colour.red()
-                        )
-                        await context.send(embed=embed)
-                        c = await conn.cursor()
-                        await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-                        await conn.commit()
-                        return
-                    try:
-                        await channel.delete()
-                    except discord.Forbidden:
-                        embed = discord.Embed(
-                            title="Error",
-                            description="I do not have permission to delete the music channel. Records have still "
-                                        "been removed from the database.",
-                            color=discord.Colour.red()
-                        )
-                        await context.send(embed=embed)
-                        c = await conn.cursor()
-                        await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-                        await conn.commit()
-                        return
-
-                else:
-                    embed = discord.Embed(
-                        title="Error",
-                        description="Music bot is not setup in this server. Records have still been removed from the "
-                                    "database.",
-                        color=discord.Colour.red()
-                    )
-                    await context.send(embed=embed)
-                    c = await conn.cursor()
-                    await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-                    await conn.commit()
-                    return
-
+                    await channel.delete()
+                await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                await conn.commit()
                 embed = discord.Embed(
                     title="Success",
                     description="Music bot removed successfully.",
                     color=discord.Colour.green()
                 )
-                embed.set_footer(text=f"Requested by {context.author.display_name}", icon_url=context.author.avatar.url)
                 await context.send(embed=embed)
-        except aiosqlite.IntegrityError:
-            embed = discord.Embed(
-                title="Error",
-                description="Music bot is not setup in this server.",
-                color=discord.Colour.red()
-            )
-            await context.send(embed=embed)
-            pass
-
-        try:
-            async with aiosqlite.connect(DB_PATH) as conn:
-                c = await conn.cursor()
-                await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-                await conn.commit()
         except aiosqlite.IntegrityError:
             embed = discord.Embed(
                 title="Error",
