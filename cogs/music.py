@@ -340,7 +340,7 @@ class Music(commands.Cog, name="music"):
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.defer()
-                await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
+                await interaction.followup.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
         main_embed = discord.Embed(
             title="🎶 ByteBot DJ",
