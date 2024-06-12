@@ -444,6 +444,8 @@ class Music(commands.Cog, name="music"):
                 if channel_id:
                     channel = context.guild.get_channel(channel_id[0])
                     await channel.delete()
+                else:
+                    pass
                 await c.execute("DELETE FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
                 await conn.commit()
                 embed = discord.Embed(
