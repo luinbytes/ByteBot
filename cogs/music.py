@@ -149,6 +149,7 @@ class Music(commands.Cog, name="music"):
                 try:
                     query = self.response.value
                     await self.view.play_music(interaction.guild_id, query)
+                    await interaction.response.send_message(f"Playing {query}", ephemeral=True)
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {traceback.format_exc()}")
 
@@ -252,7 +253,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -260,36 +261,39 @@ class Music(commands.Cog, name="music"):
                     )
                     if player and player.queue:
                         await self.skip_music(interaction.guild_id)
+                        await interaction.response.send_message("Skipped to the previous song.", ephemeral=True)
                 except Exception as e:
                     await interaction.response.send_message(f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
                         context.guild.voice_client
                     )
                     await player.pause(not player.paused)
+                    await interaction.response.send_message("Paused the music.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
                         context.guild.voice_client
                     )
                     await player.stop()
+                    await interaction.response.send_message("Skipped the song.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -309,12 +313,13 @@ class Music(commands.Cog, name="music"):
                             embed = message.embeds[0]
                             embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
                             await message.edit(embed=embed)
+                    await interaction.response.send_message("Volume increased.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
             async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -334,12 +339,13 @@ class Music(commands.Cog, name="music"):
                             embed = message.embeds[0]
                             embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
                             await message.edit(embed=embed)
+                    await interaction.response.send_message("Volume decreased.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await context.defer()
+                await interaction.response.defer()
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
         main_embed = discord.Embed(
