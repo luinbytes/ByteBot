@@ -106,26 +106,37 @@ class Music(commands.Cog, name="music"):
             self.channel = None
             await player.disconnect()
 
-            # update main and queue embeds
+            # update the main embed to show that nothing is playing
             async with aiosqlite.connect(DB_PATH) as conn:
                 c = await conn.cursor()
-                guild_id = payload.player.guild.id
-                channel_id_tuple = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
-                                                   (guild_id,))
-                channel_id_tuple = await channel_id_tuple.fetchone()
-                channel_id = channel_id_tuple[0]
-                message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
+                guild_id = player.guild.id
+                channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
                                              (guild_id,))
-                message_id = await message_id.fetchone()
-                if message_id:
-                    channel = await self.bot.fetch_channel(channel_id)
-                    message = await channel.fetch_message(message_id[0])
-                    embed = message.embeds[0]
-                    embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
-                    await message.edit(embed=embed)
-                    queue_message = await channel.fetch_message(message_id[0])
+                channel_id = await channel_id.fetchone()
+                if channel_id:
+                    channel = await self.bot.fetch_channel(channel_id[0])
+                    message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                                 (guild_id,))
+                    message_id = await message_id.fetchone()
+                    if message_id:
+                        message = await channel.fetch_message(message_id[0])
+                        embed = message.embeds[0]
+                        embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
+                        embed.set_thumbnail(
+                            url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
+                        await message.edit(embed=embed)
+
+            # update the queue embed to show that the queue is empty
+            async with aiosqlite.connect(DB_PATH) as conn:
+                c = await conn.cursor()
+                guild_id = player.guild.id
+                queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
+                queue_id = await queue_id.fetchone()
+                if queue_id:
+                    channel = await self.bot.fetch_channel(channel_id[0])
+                    queue_message = await channel.fetch_message(queue_id[0])
                     queue_embed = queue_message.embeds[0]
-                    queue_embed.description = "Queue:"
+                    queue_embed.description = "Queue:\nNothing"
                     await queue_message.edit(embed=queue_embed)
 
     @commands.hybrid_command(
