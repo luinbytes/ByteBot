@@ -43,8 +43,10 @@ class Music(commands.Cog, name="music"):
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
             guild_id = payload.player.guild.id
-            channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-            channel_id = await channel_id.fetchone()
+            channel_id_tuple = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                               (guild_id,))
+            channel_id_tuple = await channel_id_tuple.fetchone()
+            channel_id = channel_id_tuple[0]  # Extract the channel_id from the tuple
             message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             message_id = await message_id.fetchone()
             if message_id:
@@ -58,8 +60,10 @@ class Music(commands.Cog, name="music"):
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
             guild_id = payload.player.guild.id
-            channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
-            channel_id = await channel_id.fetchone()
+            channel_id_tuple = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                               (guild_id,))
+            channel_id_tuple = await channel_id_tuple.fetchone()
+            channel_id = channel_id_tuple[0]  # Extract the channel_id from the tuple
             queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             queue_id = await queue_id.fetchone()
             if queue_id:
