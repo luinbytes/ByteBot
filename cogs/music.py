@@ -298,6 +298,7 @@ class Music(commands.Cog, name="music"):
                         context.guild.voice_client
                     )
                     await player.set_volume(player.volume + 5)
+                    await interaction.response.send_message("Volume increased.", ephemeral=True)
                     volume_global = player.volume
                     async with aiosqlite.connect(DB_PATH) as conn:
                         c = await conn.cursor()
@@ -311,7 +312,6 @@ class Music(commands.Cog, name="music"):
                             embed = message.embeds[0]
                             embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
                             await message.edit(embed=embed)
-                    await interaction.response.send_message("Volume increased.", ephemeral=True)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
