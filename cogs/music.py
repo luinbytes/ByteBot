@@ -151,7 +151,6 @@ class Music(commands.Cog, name="music"):
                     wavelink.Player,
                     context.guild.voice_client
                 )
-                self.player = player
                 await player.pause(not player.paused)
 
             async def skip_music(self, guild_id):
@@ -187,37 +186,68 @@ class Music(commands.Cog, name="music"):
                 else:
                     await interaction.response.send_message("No previous song in the queue.")
 
+            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
+            async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
+                try:
+                    player: wavelink.Player = cast(
+                        wavelink.Player,
+                        context.guild.voice_client
+                    )
+                    if player and player.queue:
+                        await self.skip_music(interaction.guild_id)
+                        await interaction.response.send_message("Skipped to the previous song.")
+                    else:
+                        await interaction.response.send_message("No previous song in the queue.")
+                except Exception as e:
+                    await interaction.response.send_message(f"An error occurred: {str(e)}")
+
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player = wavelink.Player(context.guild.voice_client)
-                self.player = player
-                await self.pause_music(interaction.guild_id)
-                await interaction.response.send_message("Toggled pause on the current song.")
+                try:
+                    player: wavelink.Player = cast(
+                        wavelink.Player,
+                        context.guild.voice_client
+                    )
+                    await player.pause(not player.paused)
+                    await interaction.response.send_message("Toggled pause on the current song.")
+                except Exception as e:
+                    await interaction.response.send_message(f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player = wavelink.Player(context.guild.voice_client)
-                self.player = player
-                await self.skip_music(interaction.guild_id)
-                await interaction.response.send_message("Skipped the current song.")
+                try:
+                    player: wavelink.Player = cast(
+                        wavelink.Player,
+                        context.guild.voice_client
+                    )
+                    await player.stop()
+                    await interaction.response.send_message("Skipped the current song.")
+                except Exception as e:
+                    await interaction.response.send_message(f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player = wavelink.Player(context.guild.voice_client)
-                self.player = player
-                await player.set_volume(player.volume + 10)
-                await interaction.response.send_message(f"Volume set to {player.volume}%")
+                try:
+                    player: wavelink.Player = cast(
+                        wavelink.Player,
+                        context.guild.voice_client
+                    )
+                    await player.set_volume(player.volume + 10)
+                    await interaction.response.send_message(f"Volume set to {player.volume}%")
+                except Exception as e:
+                    await interaction.response.send_message(f"An error occurred: {str(e)}")
 
             @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
             async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
-                player = wavelink.Player(context.guild.voice_client)
-                self.player = player
-                await player.set_volume(player.volume - 10)
-                await interaction.response.send_message(f"Volume set to {player.volume}%")
-
-            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
-            async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
+                try:
+                    player: wavelink.Player = cast(
+                        wavelink.Player,
+                        context.guild.voice_client
+                    )
+                    await player.set_volume(player.volume - 10)
+                    await interaction.response.send_message(f"Volume set to {player.volume}%")
+                except Exception as e:
+                    await interaction.response.send_message(f"An error occurred: {str(e)}")
 
         embed = discord.Embed(
             title="🎶 ByteBot DJ",
