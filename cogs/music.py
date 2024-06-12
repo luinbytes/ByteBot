@@ -199,6 +199,24 @@ class Music(commands.Cog, name="music"):
                 if not player.playing and player.queue:
                     await player.play(player.queue.get(), volume=self.volume)
 
+                # edit the queue embed to show the current queue including the song just added
+                async with aiosqlite.connect(DB_PATH) as conn:
+                    c = await conn.cursor()
+                    guild_id = player.guild.id
+                    queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                               (guild_id,))
+                    queue_id = await queue_id.fetchone()
+                    if queue_id:
+                        channel = await self.bot.fetch_channel(channel_id)
+                        queue_message = await channel.fetch_message(queue_id[0])
+                        queue_embed = queue_message.embeds[0]
+                        queue = player.queue
+                        queue_list = []
+                        for i, track in enumerate(queue):
+                            queue_list.append(f"{i + 1}. {track.title}")
+                        queue_embed.description = "Queue:\n" + "\n".join(queue_list)
+                        await queue_message.edit(embed=queue_embed)
+
                 volume_global = self.volume
 
             async def pause_music(self, guild_id):
@@ -274,6 +292,18 @@ class Music(commands.Cog, name="music"):
                     )
                     await player.set_volume(player.volume + 5)
                     volume_global = player.volume
+                    async with aiosqlite.connect(DB_PATH) as conn:
+                        c = await conn.cursor()
+                        guild_id = player.guild.id
+                        message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                                     (guild_id,))
+                        message_id = await message_id.fetchone()
+                        if message_id:
+                            channel = await self.bot.fetch_channel(channel_id)
+                            message = await channel.fetch_message(message_id[0])
+                            embed = message.embeds[0]
+                            embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
+                            await message.edit(embed=embed)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
@@ -286,6 +316,18 @@ class Music(commands.Cog, name="music"):
                     )
                     await player.set_volume(player.volume - 5)
                     volume_global = player.volume
+                    async with aiosqlite.connect(DB_PATH) as conn:
+                        c = await conn.cursor()
+                        guild_id = player.guild.id
+                        message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
+                                                     (guild_id,))
+                        message_id = await message_id.fetchone()
+                        if message_id:
+                            channel = await self.bot.fetch_channel(channel_id)
+                            message = await channel.fetch_message(message_id[0])
+                            embed = message.embeds[0]
+                            embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
+                            await message.edit(embed=embed)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
