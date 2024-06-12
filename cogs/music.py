@@ -111,11 +111,10 @@ class Music(commands.Cog, name="music"):
             async def play_music(self, guild_id, query):
                 logging.log(logging.INFO, f"Playing {query}")
                 query = query.strip('<>')
-                destination = self.user.voice.channel
+                destination = context.author.voice.channel
                 if context.guild.voice_client is None:
                     await destination.connect(cls=wavelink.Player, self_deaf=True)
                 player = wavelink.Player(context.guild.voice_client)
-                self.player = player
                 try:
                     tracks: wavelink.Search = await wavelink.Playable.search(query)
                     if not tracks:
@@ -124,10 +123,10 @@ class Music(commands.Cog, name="music"):
                     return None
 
                 track: wavelink.Playable = tracks[0]
-                await self.player.queue.put_wait(track)
+                await player.queue.put_wait(track)
 
-                if not self.player.playing:
-                    await self.player.play(player.queue.get(), volume=self.volume)
+                if not player.playing:
+                    await player.play(player.queue.get(), volume=self.volume)
 
             async def pause_music(self, guild_id):
                 player = wavelink.Player(context.guild.voice_client)
