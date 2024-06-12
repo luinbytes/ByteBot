@@ -293,7 +293,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await context.defer()
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
