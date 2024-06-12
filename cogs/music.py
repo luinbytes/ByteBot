@@ -53,7 +53,8 @@ class Music(commands.Cog, name="music"):
                 channel = await self.bot.fetch_channel(channel_id)
                 message = await channel.fetch_message(message_id[0])
                 embed = message.embeds[0]
-                embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track_duration}", inline=False)
+                embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track.author} - {track_duration}",
+                                   inline=False)
                 # update the album art
                 if track.artwork:
                     embed.set_thumbnail(url=payload.track.artwork)
@@ -76,7 +77,7 @@ class Music(commands.Cog, name="music"):
                     queue = player.queue
                     queue_list = []
                     for i, track in enumerate(queue):
-                        queue_list.append(f"{i + 1}. {track.title}")
+                        queue_list.append(f"{i + 1}. {track.title} - {track.author}")
                     queue_embed.description = "Queue:\n" + "\n".join(queue_list)
                     await queue_message.edit(embed=queue_embed)
         else:
@@ -89,7 +90,7 @@ class Music(commands.Cog, name="music"):
                     channel = await self.bot.fetch_channel(channel_id)
                     queue_message = await channel.fetch_message(queue_id[0])
                     queue_embed = queue_message.embeds[0]
-                    queue_embed.description = "Queue:\nEmpty"
+                    queue_embed.description = f"Queue:\n{track.title} - {track.author}"
                     await queue_message.edit(embed=queue_embed)
 
     @commands.Cog.listener()
@@ -251,6 +252,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary)
             async def previous(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -263,6 +265,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
             async def pause(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -274,6 +277,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary)
             async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -285,6 +289,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔊+", style=discord.ButtonStyle.green)
             async def volume_up(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -309,6 +314,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔊-", style=discord.ButtonStyle.red)
             async def volume_down(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -333,6 +339,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple)
             async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.defer()
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
         main_embed = discord.Embed(
