@@ -42,7 +42,7 @@ class Music(commands.Cog, name="music"):
         # Edit the main embed to show what is currently playing
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
-            guild_id = player.guild_id
+            guild_id = payload.guild.id
             message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             message_id = await message_id.fetchone()
             if message_id:
@@ -55,7 +55,7 @@ class Music(commands.Cog, name="music"):
         # Edit the queue embed to show the queue
         async with aiosqlite.connect(DB_PATH) as conn:
             c = await conn.cursor()
-            guild_id = player.guild_id
+            guild_id = payload.guild.id
             queue_id = await c.execute("SELECT queue_id FROM GuildMusicChannels WHERE guild_id = ?", (guild_id,))
             queue_id = await queue_id.fetchone()
             if queue_id:
