@@ -248,13 +248,22 @@ class DiscordBot(commands.Bot):
 
     async def on_ready(self):
         async with aiosqlite.connect(DB_PATH) as db:
-            async with db.cursor() as cursor:
-                for guild in self.guilds:
-                    guild_id = guild.id
-                    prefix = await self.guild_prefix(guild_id)
+            c = await db.cursor()
+            for guild in self.guilds:
+                guild_id = guild.id
+                await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+                row = await c.fetchone()
+                if row is None:
+                    # If the guild is not in the database, insert it with the default prefix
+                    await c.execute("INSERT INTO GuildSettings (guild_id, prefix) VALUES (?, ?)", (guild_id, '>'))
+                    self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
+                else:
+                    prefix = row[0]
                     if prefix is None:
-                        await self.guild_prefix(guild_id, '>')
+                        # If the guild is in the database but the prefix is None, update it with the default prefix
+                        await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", ('>', guild_id))
                         self.logger.error(f"Prefix for guild {guild.id} is not set, setting it to default prefix '>'")
+            await db.commit()
 
         node: wavelink.Node = wavelink.Node(
             uri="http://lavalink:2333",
