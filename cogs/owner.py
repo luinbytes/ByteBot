@@ -36,30 +36,26 @@ class Owner(commands.Cog, name="owner"):
             c = await conn.cursor()
             if prefix is not None:
                 # Write to the table
-                try:
-                    await c.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-                except aiosqlite.IntegrityError:
-                    await c.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+                await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
                 await conn.commit()
             else:
                 # Read from the table
-                await c.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+                await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
                 row = await c.fetchone()
                 return row[0] if row else None
 
-    def guild_autoroles(db, guild_id, role_id=None):
-        db_conn = sqlite3.connect(DB_PATH)
-        db = db_conn.cursor()
-        if role_id is not None:
-            # Write to the table
-            db.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)", (guild_id, role_id))
-            db.commit()
-        else:
-            # Read from the table
-            cursor = db.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
-            row = cursor.fetchone()
-            return row[0] if row else None
-        db.close()
+    async def guild_autoroles(db, guild_id, role_id=None):
+        async with aiosqlite.connect(DB_PATH) as db_conn:
+            db = await db_conn.cursor()
+            if role_id is not None:
+                # Write to the table
+                await db.execute("UPDATE GuildSettings SET autorole_id = ? WHERE guild_id = ?", (role_id, guild_id))
+                await db_conn.commit()
+            else:
+                # Read from the table
+                await db.execute("SELECT autorole_id FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+                row = await db.fetchone()
+                return row[0] if row else None
 
     def guild_starboard_channels(db, guild_id, channel_id=None, starboard_min_reactions=None):
         db_conn = sqlite3.connect(DB_PATH)
@@ -67,13 +63,13 @@ class Owner(commands.Cog, name="owner"):
         if channel_id is not None and starboard_min_reactions is not None:
             # Write to the table
             db.execute(
-                "INSERT INTO GuildStarboardChannels (guild_id, channel_id, starboard_min_reactions) VALUES (?, ?, ?)",
+                "UPDATE GuildSettings SET starboard_channel_id = ?, starboard_min_stars = ? WHERE guild_id = ?",
                 (guild_id, channel_id, starboard_min_reactions))
             db.commit()
         else:
             # Read from the table
             cursor = db.execute(
-                "SELECT channel_id, starboard_min_reactions FROM GuildStarboardChannels WHERE guild_id = ?",
+                "SELECT starboard_channel_id, starboard_min_stars FROM GuildSettings WHERE guild_id = ?",
                 (guild_id,))
             row = cursor.fetchone()
             return row if row else None
@@ -499,6 +495,37 @@ class Owner(commands.Cog, name="owner"):
                 await channel.send(embed=embed)
             except discord.Forbidden:
                 continue  # Skip this server and continue with the next one
+        embed = discord.Embed(
+            title="Message Sent",
+            description="The message has been sent successfully.",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Message", value=message)
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="massmessage",
+        description="Send a message to all servers.",
+        usage="<message>",
+        aliases=["massmsg"]
+    )
+    @app_commands.describe(message="The message to send.")
+    @commands.is_owner()
+    async def massmessage(self, context: Context, *, message: str):
+        """
+        Send a message to all servers.
+
+        :param message: The message to send.
+        """
+        for guild in self.bot.guilds:
+            # try and find a general channel, if not then use the first channel
+            channel = discord.utils.get(guild.text_channels, name="general")
+            if not channel:
+                channel = guild.text_channels[0]
+            embed = discord.Embed(title="ByteBot Mass Message", description=message, color=discord.Color.pink())
+            embed.set_footer(text=f"Message from the developer")
+            await channel.send(embed=embed)
         embed = discord.Embed(
             title="Message Sent",
             description="The message has been sent successfully.",
