@@ -510,6 +510,37 @@ class Owner(commands.Cog, name="owner"):
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="massmessage",
+        description="Send a message to all servers.",
+        usage="<message>",
+        aliases=["massmsg"]
+    )
+    @app_commands.describe(message="The message to send.")
+    @commands.is_owner()
+    async def massmessage(self, context: Context, *, message: str):
+        """
+        Send a message to all servers.
+
+        :param message: The message to send.
+        """
+        for guild in self.bot.guilds:
+            # try and find a general channel, if not then use the first channel
+            channel = discord.utils.get(guild.text_channels, name="general")
+            if not channel:
+                channel = guild.text_channels[0]
+            embed = discord.Embed(title="ByteBot Mass Message", description=message, color=discord.Color.pink())
+            embed.set_footer(text=f"Message from the developer")
+            await channel.send(embed=embed)
+        embed = discord.Embed(
+            title="Message Sent",
+            description="The message has been sent successfully.",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Message", value=message)
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
+
 
 @commands.Cog.listener()
 async def on_disconnect(self):
