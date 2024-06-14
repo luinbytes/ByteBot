@@ -10,7 +10,7 @@ from typing import List, Tuple, Union
 import discord
 from PIL import Image
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -887,6 +887,89 @@ class Currency(commands.Cog, name="currency"):
                 description=f"Coin drops have been set up in {channel_id.mention}.",
                 color=discord.Color.green()
             )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+        conn.commit()
+
+    @commands.hybrid_command(
+        name="rmcoindrops",
+        description="Remove coin drops from your server.",
+        aliases=["removedrops", "rmcd"]
+    )
+    @commands.has_permissions(administrator=True)
+    async def rmcoindrops(self, context: Context) -> None:
+        """
+        Remove coin drops from your server.
+
+        :param context: The application command context.
+        """
+        guild_id = context.guild.id
+        c.execute("SELECT coin_drop_channel_id FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+        result = c.fetchone()
+        if result:
+            c.execute("UPDATE GuildSettings SET coin_drop_channel_id = NULL WHERE guild_id = ?", (guild_id,))
+            embed = discord.Embed(
+                title="Coin Drops",
+                description="Coin drops have been removed from this server.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                title="Coin Drops",
+                description="Coin drops have not been set up in this server.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+            await context.send(embed=embed)
+        conn.commit()
+
+    @tasks.loop(minutes=random.randint(30, 120))
+    async def coin_drop(self):
+        class CoinDropButtons(discord.ui.View):
+            def __init__(self, user):
+                super().__init__()
+                self.user = user
+                self.value = None
+
+            @discord.ui.button(label='Claim!', style=discord.ButtonStyle.blurple)
+            async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
+                if interaction.user != self.user:
+                    return
+                self.value = 'claim'
+                self.stop()
+
+        c.execute("SELECT guild_id, coin_drop_channel_id FROM GuildSettings WHERE coin_drop_channel_id IS NOT NULL")
+        results = c.fetchall()
+        for guild_id, channel_id in results:
+            guild = self.bot.get_guild(guild_id)
+            channel = guild.get_channel(channel_id)
+            if channel:
+                embed = discord.Embed(
+                    title="Coin Drop",
+                    description="A coin drop has appeared! React to claim it.",
+                    color=discord.Color.gold()
+                )
+                embed.set_footer(text="Claimed by: None")
+                message = await channel.send(embed=embed, view=CoinDropButtons(None))
+                await asyncio.sleep(60)
+                view = message.view
+                if view.value == 'claim':
+                    c.execute("SELECT user_id FROM UserEconomy WHERE user_id = ?", (view.user.id,))
+                    result = c.fetchone()
+                    if result:
+                        reward = random.randint(250, 1000)
+                        c.execute("UPDATE UserEconomy SET balance = balance + ? WHERE user_id = ?",
+                                  (reward, view.user.id))
+                        conn.commit()
+                        embed.description = f"{view.user.name} has claimed the coin drop!"
+                        embed.set_footer(text=f"{reward} 🪙's Claimed by: {view.user.name}")
+                        await message.edit(embed=embed, view=None)
+                    else:
+                        await message.delete()
+                else:
+                    await message.delete()
 
 
 @commands.Cog.listener()
