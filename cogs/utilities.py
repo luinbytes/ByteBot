@@ -15,19 +15,16 @@ DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 
 async def guild_prefix(db, guild_id, prefix=None):
-    async with aiosqlite.connect(DB_PATH) as db_conn:
-        db = await db_conn.cursor()
+    async with aiosqlite.connect(DB_PATH) as conn:
+        c = await conn.cursor()
         if prefix is not None:
             # Write to the table
-            try:
-                await db.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-            except aiosqlite.IntegrityError:
-                await db.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
-            await db_conn.commit()
+            await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+            await conn.commit()
         else:
             # Read from the table
-            cursor = await db.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
-            row = await cursor.fetchone()
+            await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
             return row[0] if row else None
 
 
@@ -276,7 +273,7 @@ class Utilities(commands.Cog, name="utilities"):
         c = conn.cursor()
         if channel is None:
             # Lookup the welcome channel from the GuildWelcomeChannels table
-            cursor = c.execute("SELECT channel_id FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
+            cursor = c.execute("SELECT welcome_channel_id FROM GuildSettings WHERE guild_id = ?", (context.guild.id,))
             row = cursor.fetchone()
             if row:
                 channel = context.guild.get_channel(row[0])
@@ -297,12 +294,8 @@ class Utilities(commands.Cog, name="utilities"):
                 await context.send(embed=embed)
         else:
             # Write to the table
-            try:
-                c.execute("INSERT INTO GuildWelcomeChannels (guild_id, channel_id) VALUES (?, ?)",
-                          (context.guild.id, channel.id))
-            except sqlite3.IntegrityError:
-                c.execute("UPDATE GuildWelcomeChannels SET channel_id = ? WHERE guild_id = ?",
-                          (channel.id, context.guild.id))
+            c.execute("UPDATE GuildSettings SET welcome_channel_id = ? WHERE guild_id = ?",
+                      (channel.id, context.guild.id))
             conn.commit()
             embed = discord.Embed(
                 title="Welcome Channel",

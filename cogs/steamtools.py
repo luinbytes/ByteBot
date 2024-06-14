@@ -241,24 +241,19 @@ class SteamTools(commands.Cog, name="steamtools"):
 
         async with aiosqlite.connect(DB_PATH) as conn:
             async with conn.cursor() as cursor:
-                cursor.execute('SELECT 1 FROM GuildBanChannels WHERE guild_id = ?', (guild_id,))
-                if cursor.fetchone():
-                    cursor.execute('SELECT channel_id FROM GuildBanChannels WHERE guild_id = ?', (guild_id,))
-                    existing_channel_id = cursor.fetchone()
-                    if existing_channel_id and existing_channel_id[0] == channel_id:
-                        embed = discord.Embed(
-                            title="Ban Channel Set",
-                            description=f"Ban notifications are already being posted in {channel.mention}.",
-                            color=discord.Color.red()
-                        )
-                        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                        await context.send(embed=embed)
-                        return
-                    cursor.execute('UPDATE GuildBanChannels SET channel_id = ? WHERE guild_id = ?',
-                                   (channel_id, guild_id))
-                else:
-                    cursor.execute('INSERT INTO GuildBanChannels (guild_id, channel_id) VALUES (?, ?)',
-                                   (guild_id, channel_id))
+                await cursor.execute('SELECT steam_ban_channel_id FROM GuildSettings WHERE guild_id = ?', (guild_id,))
+                existing_channel_id = await cursor.fetchone()
+                if existing_channel_id and existing_channel_id[0] == channel_id:
+                    embed = discord.Embed(
+                        title="Ban Channel Set",
+                        description=f"Ban notifications are already being posted in {channel.mention}.",
+                        color=discord.Color.red()
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                    return
+                await cursor.execute('UPDATE GuildSettings SET steam_ban_channel_id = ? WHERE guild_id = ?',
+                                     (channel_id, guild_id))
 
         embed = discord.Embed(
             title="Ban Channel Set",
@@ -309,7 +304,7 @@ class SteamTools(commands.Cog, name="steamtools"):
         async with aiosqlite.connect(DB_PATH) as conn:
             async with conn.cursor() as cursor:
                 # Fetch the channel_id from the GuildBanChannels table
-                await cursor.execute('SELECT channel_id FROM GuildBanChannels WHERE guild_id = ?', (guild_id,))
+                await cursor.execute('SELECT steam_ban_channel_id FROM GuildSettings WHERE guild_id = ?', (guild_id,))
                 row = await cursor.fetchone()
                 if row is None:
                     embed = discord.Embed(
@@ -346,22 +341,12 @@ class SteamTools(commands.Cog, name="steamtools"):
                                 'UPDATE GuildSteamBans SET tracked_by = ? WHERE guild_id = ? AND steamid_64 = ?',
                                 (new_tracked_by, guild_id, steamid64))
 
-                            # Check if the UPDATE statement affected any rows
                             if cursor.rowcount > 0:
-                                # Fetch the updated tracked_by field
                                 await cursor.execute(
                                     'SELECT tracked_by FROM GuildSteamBans WHERE guild_id = ? AND steamid_64 = ?',
                                     (guild_id, steamid64))
                                 await conn.commit()
-                                print(f'After update: {(await cursor.fetchone())[0]}')  # Debug print
-                                # print everything in tracked_by
-                                print(
-                                    f'All tracked_by fields: {(await cursor.execute("SELECT tracked_by FROM GuildSteamBans")).fetchall()}',
-                                    end='\n\n')  # Debug print
-                            else:
-                                print('No rows updated')  # Debug print
 
-                            # Rest of your code...
                             embed = discord.Embed(
                                 title="Steam ID Already Tracked",
                                 description=f"`{profile_name}` is already being tracked for bans. Your Discord ID has "

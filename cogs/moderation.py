@@ -21,37 +21,26 @@ async def guild_prefix(db, guild_id, prefix=None):
         c = await conn.cursor()
         if prefix is not None:
             # Write to the table
-            try:
-                await c.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-            except aiosqlite.IntegrityError:
-                await c.execute("UPDATE GuildPrefix SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+            await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
             await conn.commit()
         else:
             # Read from the table
-            await c.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
+            await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
             row = await c.fetchone()
             return row[0] if row else None
 
 
-async def update_guild_prefix(db, guild_id, prefix):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        c = await conn.cursor()
-        await c.execute("INSERT OR REPLACE INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-        await conn.commit()
-
-
 async def guild_autoroles(db, guild_id, role_id=None):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        c = await conn.cursor()
+    async with aiosqlite.connect(DB_PATH) as db_conn:
+        db = await db_conn.cursor()
         if role_id is not None:
             # Write to the table
-            await c.execute("INSERT OR REPLACE INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)",
-                            (guild_id, role_id))
-            await conn.commit()
+            await db.execute("UPDATE GuildSettings SET autorole_id = ? WHERE guild_id = ?", (role_id, guild_id))
+            await db_conn.commit()
         else:
             # Read from the table
-            await c.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
-            row = await c.fetchone()
+            await db.execute("SELECT autorole_id FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+            row = await db.fetchone()
             return row[0] if row else None
 
 
@@ -62,18 +51,19 @@ async def guild_starboard_channels(self, guild_id, starboard_min_reactions=None,
 
         # If both starboard_min_reactions and channel_id are None, read from the database
         if starboard_min_reactions is None and channel_id is None:
-            await c.execute("SELECT * FROM GuildStarboardChannels WHERE guild_id = ?", (guild_id,))
-            rows = await c.fetchall()
-            return rows
+            await c.execute("SELECT starboard_channel_id, starboard_min_stars FROM GuildSettings WHERE guild_id = ?",
+                            (guild_id,))
+            row = await c.fetchone()
+            return row
 
         # If starboard_min_reactions is not None, update the starboard_min_reactions column
         if starboard_min_reactions is not None:
-            await c.execute("UPDATE GuildStarboardChannels SET starboard_min_reactions = ? WHERE guild_id = ?",
+            await c.execute("UPDATE GuildSettings SET starboard_min_stars = ? WHERE guild_id = ?",
                             (starboard_min_reactions, guild_id))
 
-        # If channel_id is not None, update the channel_id column
+        # If channel_id is not None, update the starboard_channel_id column
         if channel_id is not None:
-            await c.execute("UPDATE GuildStarboardChannels SET channel_id = ? WHERE guild_id = ?",
+            await c.execute("UPDATE GuildSettings SET starboard_channel_id = ? WHERE guild_id = ?",
                             (channel_id, guild_id))
 
         # Commit the changes

@@ -145,32 +145,31 @@ class DiscordBot(commands.Bot):
         self.database = None
         self.wavelink = wavelink
 
-    async def guild_prefix(self, guild_id, prefix=None):
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.cursor() as cursor:
-                if prefix is not None:
-                    # Write to the table
-                    await cursor.execute("INSERT INTO GuildPrefix (guild_id, prefix) VALUES (?, ?)", (guild_id, prefix))
-                    await db.commit()
-                else:
-                    # Read from the table
-                    await cursor.execute("SELECT prefix FROM GuildPrefix WHERE guild_id = ?", (guild_id,))
-                    row = await cursor.fetchone()
-                    return row[0] if row else None
+    async def guild_prefix(db, guild_id, prefix=None):
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            if prefix is not None:
+                # Write to the table
+                await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+                await conn.commit()
+            else:
+                # Read from the table
+                await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+                row = await c.fetchone()
+                return row[0] if row else None
 
-    async def guild_autoroles(self, guild_id, role_id=None):
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.cursor() as cursor:
-                if role_id is not None:
-                    # Write to the table
-                    await cursor.execute("INSERT INTO GuildAutoroles (guild_id, role_id) VALUES (?, ?)",
-                                         (guild_id, role_id))
-                    await db.commit()
-                else:
-                    # Read from the table
-                    await cursor.execute("SELECT role_id FROM GuildAutoroles WHERE guild_id = ?", (guild_id,))
-                    row = await cursor.fetchone()
-                    return row[0] if row else None
+    async def guild_autoroles(db, guild_id, role_id=None):
+        async with aiosqlite.connect(DB_PATH) as db_conn:
+            db = await db_conn.cursor()
+            if role_id is not None:
+                # Write to the table
+                await db.execute("UPDATE GuildSettings SET autorole_id = ? WHERE guild_id = ?", (role_id, guild_id))
+                await db_conn.commit()
+            else:
+                # Read from the table
+                await db.execute("SELECT autorole_id FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+                row = await db.fetchone()
+                return row[0] if row else None
 
     async def init_db(self) -> None:
         async with aiosqlite.connect(
