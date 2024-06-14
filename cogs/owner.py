@@ -471,44 +471,38 @@ class Owner(commands.Cog, name="owner"):
             await context.send(embed=embed)
 
     @commands.hybrid_command(
-        name="sendmsgtoserver",
-        description="Send a message to a server.",
-        usage="<server_id> <channel_id> <message>",
-        aliases=["sendmsg"]
+        name="massmessage",
+        description="Send a message to all servers.",
+        usage="<message>",
+        aliases=["massmsg"]
     )
-    @app_commands.describe(
-        server_id="The ID of the server to send the message to.",
-        channel_id="The ID of the channel to send the message to.",
-        message="The message to send."
-    )
+    @app_commands.describe(message="The message to send.")
     @commands.is_owner()
-    async def sendmsgtoserver(self, context: Context, server_id: int, channel_id: int, *, message: str):
+    async def massmessage(self, context: Context, *, message: str):
         """
-        Send a message to a server.
+        Send a message to all servers.
 
-        :param server_id: The ID of the server to send the message to.
-        :param channel_id: The ID of the channel to send the message to.
         :param message: The message to send.
         """
-        try:
-            server = self.bot.get_guild(server_id)
-            channel = server.get_channel(channel_id)
-            await channel.send(message)
-            embed = discord.Embed(
-                title="Message Sent",
-                description="The message has been sent successfully.",
-                color=discord.Color.green()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-        except Exception as e:
-            embed = discord.Embed(
-                title="Error",
-                description=f"An error occurred: {e}",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
+        for guild in self.bot.guilds:
+            # try and find a general channel, if not then use the first channel
+            channel = discord.utils.get(guild.text_channels, name="general")
+            if not channel:
+                channel = guild.text_channels[0]
+            embed = discord.Embed(title="ByteBot Mass Message", description=message, color=discord.Color.pink())
+            embed.set_footer(text=f"Message from the developer")
+            try:
+                await channel.send(embed=embed)
+            except discord.Forbidden:
+                continue  # Skip this server and continue with the next one
+        embed = discord.Embed(
+            title="Message Sent",
+            description="The message has been sent successfully.",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Message", value=message)
+        embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+        await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="massmessage",
