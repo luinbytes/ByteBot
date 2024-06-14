@@ -342,6 +342,83 @@ class Utilities(commands.Cog, name="utilities"):
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
             await context.send(embed=embed)
 
+    @commands.hybrid_command(
+        name="setleavechannel",
+        description="Set the leave channel for the server.",
+        usage="setleavechannel <#channel>",
+        aliases=["slc"]
+    )
+    @app_commands.describe(
+        channel="The channel to set as the leave channel."
+    )
+    async def set_leave_channel(self, context: Context, channel: discord.TextChannel = None) -> None:
+        with aiosqlite.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            if channel is None:
+                # Lookup the leave channel from the GuildLeaveChannels table
+                await c.execute("SELECT leave_channel_id FROM GuildSettings WHERE guild_id = ?", (context.guild.id,))
+                row = await c.fetchone()
+                if row:
+                    channel = context.guild.get_channel(row[0])
+                    embed = discord.Embed(
+                        title="Leave Channel",
+                        description=f"The current leave channel is {channel.mention}",
+                        color=0xBEBEFE,
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="Error!",
+                        description="No leave channel has been set for this server.",
+                        color=0xE02B2B,
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+            else:
+                # Write to the table
+                await c.execute("UPDATE GuildSettings SET leave_channel_id = ? WHERE guild_id = ?",
+                                (channel.id, context.guild.id))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="Leave Channel",
+                    description=f"Leave channel set to {channel.mention}",
+                    color=0xBEBEFE,
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="removeleavechannel",
+        description="Remove the leave channel for the server.",
+        aliases=["rlc", "rmleavechannel"],
+        usage="removeleavechannel"
+    )
+    async def remove_leave_channel(self, context: Context) -> None:
+        with aiosqlite.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            # Check if leave channel is even set
+            await c.execute("SELECT leave_channel_id FROM GuildSettings WHERE guild_id = ?", (context.guild.id,))
+            row = await c.fetchone()
+            if row:
+                await c.execute("DELETE FROM GuildSettings WHERE guild_id = ?", (context.guild.id,))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="Leave Channel",
+                    description=f"Leave channel removed",
+                    color=0xBEBEFE,
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="Error!",
+                    description="No leave channel has been set for this server.",
+                    color=0xE02B2B,
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+
     async def remove_spoilers(
             self, interaction: discord.Interaction, message: discord.Message
     ) -> None:
@@ -574,6 +651,24 @@ class Utilities(commands.Cog, name="utilities"):
             embed.set_image(url=gif)
             embed.set_footer(text="ByteBot - THE Mediocre Discord Bot", icon_url=self.bot.user.avatar.url)
             await channel.send(f"{member.mention} has joined!", embed=embed)
+
+        conn.close()
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        cursor = c.execute("SELECT leave_channel_id FROM GuildSettings WHERE guild_id = ?", (member.guild.id,))
+        row = cursor.fetchone()
+        if row:
+            channel = member.guild.get_channel(row[0])
+            embed = discord.Embed(
+                title=f"{member.guild.name}",
+                description=f"{member.mention} has left {member.guild.name}.",
+                color=0xBEBEFE,
+            )
+            embed.set_footer(text="ByteBot - THE Mediocre Discord Bot", icon_url=self.bot.user.avatar.url)
+            await channel.send(embed=embed)
 
         conn.close()
 
