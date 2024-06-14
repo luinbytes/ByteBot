@@ -679,7 +679,7 @@ class Moderation(commands.Cog, name="moderation"):
     )
     @commands.has_permissions(administrator=True)
     async def setprefix(self, context: Context, prefix: str):
-        await update_guild_prefix(self, context.guild.id, prefix)
+        await guild_prefix(self, context.guild.id, prefix)
         embed = discord.Embed(
             title="Prefix Set",
             description=f"The prefix for this server has been set to `{prefix}`.",
