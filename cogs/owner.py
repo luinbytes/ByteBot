@@ -525,7 +525,10 @@ class Owner(commands.Cog, name="owner"):
                 channel = guild.text_channels[0]
             embed = discord.Embed(title="ByteBot Mass Message", description=message, color=discord.Color.pink())
             embed.set_footer(text=f"Message from the developer")
-            await channel.send(embed=embed)
+            try:
+                await channel.send(embed=embed)
+            except discord.Forbidden:
+                continue  # Skip this server and continue with the next one
         embed = discord.Embed(
             title="Message Sent",
             description="The message has been sent successfully.",
