@@ -149,6 +149,7 @@ class Music(commands.Cog, name="music"):
             response = discord.ui.TextInput(label="Search for a song", placeholder="Enter a song name or URL")
 
             async def on_submit(self, interaction: discord.Interaction):
+                await interaction.response.defer()
                 try:
                     query = self.response.value
                     await self.view.play_music(interaction.guild_id, query)
@@ -259,19 +260,6 @@ class Music(commands.Cog, name="music"):
                 )
                 await player.disconnect()
 
-            @discord.ui.button(label="⏮️", style=discord.ButtonStyle.primary, row=1)
-            async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.defer()
-                try:
-                    player: wavelink.Player = cast(
-                        wavelink.Player,
-                        context.guild.voice_client
-                    )
-                    if player and player.queue:
-                        await self.skip_music(interaction.guild_id)
-                except Exception as e:
-                    await interaction.response.send_message(f"An error occurred: {str(e)}")
-
             @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green, row=1)
             async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.defer()
@@ -286,7 +274,7 @@ class Music(commands.Cog, name="music"):
 
             @discord.ui.button(label="⏭️", style=discord.ButtonStyle.primary, row=1)
             async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
-                interaction.response.defer()
+                await interaction.response.defer()
                 try:
                     player: wavelink.Player = cast(
                         wavelink.Player,
@@ -346,7 +334,7 @@ class Music(commands.Cog, name="music"):
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
-            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple, row=3)
+            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple, row=1)
             async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
