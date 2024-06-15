@@ -334,7 +334,7 @@ class Music(commands.Cog, name="music"):
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
 
-            @discord.ui.button(label="🔍", style=discord.ButtonStyle.blurple, row=1)
+            @discord.ui.button(label="🔍", style=discord.ButtonStyle.secondary, row=1)
             async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.response.send_modal(MusicSearchModal(view=self, bot=self.bot))
 
