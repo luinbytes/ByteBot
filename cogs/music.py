@@ -92,12 +92,12 @@ class Music(commands.Cog, name="music"):
             async with aiosqlite.connect(DB_PATH) as conn:
                 c = await conn.cursor()
                 guild_id = player.guild.id
-                channel_id = await c.execute("SELECT channel_id FROM GuildMusicChannels WHERE guild_id = ?",
+                channel_id = await c.execute("SELECT music_message_id FROM GuildSettings WHERE guild_id = ?",
                                              (guild_id,))
                 channel_id = await channel_id.fetchone()
                 if channel_id:
                     channel = await self.bot.fetch_channel(channel_id[0])
-                    message_id = await c.execute("SELECT message_id FROM GuildMusicChannels WHERE guild_id = ?",
+                    message_id = await c.execute("SELECT music_message_id FROM GuildSettings WHERE guild_id = ?",
                                                  (guild_id,))
                     message_id = await message_id.fetchone()
                     if message_id:
