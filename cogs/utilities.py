@@ -269,42 +269,41 @@ class Utilities(commands.Cog, name="utilities"):
         :param context: The hybrid command context.
         :param channel: The channel to set as the welcome channel.
         """
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        if channel is None:
-            # Lookup the welcome channel from the GuildWelcomeChannels table
-            cursor = c.execute("SELECT welcome_channel_id FROM GuildSettings WHERE guild_id = ?", (context.guild.id,))
-            row = cursor.fetchone()
-            if row:
-                channel = context.guild.get_channel(row[0])
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            if channel is None:
+                # Lookup the welcome channel from the GuildWelcomeChannels table
+                await c.execute("SELECT welcome_channel_id FROM GuildSettings WHERE guild_id = ?", (context.guild.id,))
+                row = await c.fetchone()
+                if row:
+                    channel = context.guild.get_channel(row[0])
+                    embed = discord.Embed(
+                        title="Welcome Channel",
+                        description=f"The current welcome channel is {channel.mention}",
+                        color=0xBEBEFE,
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="Error!",
+                        description="No welcome channel has been set for this server.",
+                        color=0xE02B2B,
+                    )
+                    embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                    await context.send(embed=embed)
+            else:
+                # Write to the table
+                await c.execute("UPDATE GuildSettings SET welcome_channel_id = ? WHERE guild_id = ?",
+                                (channel.id, context.guild.id))
+                await conn.commit()
                 embed = discord.Embed(
                     title="Welcome Channel",
-                    description=f"The current welcome channel is {channel.mention}",
+                    description=f"Welcome channel set to {channel.mention}",
                     color=0xBEBEFE,
                 )
                 embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
                 await context.send(embed=embed)
-            else:
-                embed = discord.Embed(
-                    title="Error!",
-                    description="No welcome channel has been set for this server.",
-                    color=0xE02B2B,
-                )
-                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-                await context.send(embed=embed)
-        else:
-            # Write to the table
-            c.execute("UPDATE GuildSettings SET welcome_channel_id = ? WHERE guild_id = ?",
-                      (channel.id, context.guild.id))
-            conn.commit()
-            embed = discord.Embed(
-                title="Welcome Channel",
-                description=f"Welcome channel set to {channel.mention}",
-                color=0xBEBEFE,
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-        conn.close()
 
     @commands.hybrid_command(
         name="removewelcomechannel",
@@ -318,29 +317,29 @@ class Utilities(commands.Cog, name="utilities"):
 
         :param context: The hybrid command context.
         """
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        # Check if welcome channel is even set
-        cursor = c.execute("SELECT channel_id FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
-        row = cursor.fetchone()
-        if row:
-            c.execute("DELETE FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
-            conn.commit()
-            embed = discord.Embed(
-                title="Welcome Channel",
-                description=f"Welcome channel removed",
-                color=0xBEBEFE,
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="Error!",
-                description="No welcome channel has been set for this server.",
-                color=0xE02B2B,
-            )
-            embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
-            await context.send(embed=embed)
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            # Check if welcome channel is even set
+            await c.execute("SELECT channel_id FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
+            row = await c.fetchone()
+            if row:
+                await c.execute("DELETE FROM GuildWelcomeChannels WHERE guild_id = ?", (context.guild.id,))
+                await conn.commit()
+                embed = discord.Embed(
+                    title="Welcome Channel",
+                    description=f"Welcome channel removed",
+                    color=0xBEBEFE,
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="Error!",
+                    description="No welcome channel has been set for this server.",
+                    color=0xE02B2B,
+                )
+                embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
+                await context.send(embed=embed)
 
     @commands.hybrid_command(
         name="setleavechannel",
@@ -352,7 +351,12 @@ class Utilities(commands.Cog, name="utilities"):
         channel="The channel to set as the leave channel."
     )
     async def set_leave_channel(self, context: Context, channel: discord.TextChannel = None) -> None:
-        with aiosqlite.connect(DB_PATH) as conn:
+        """
+        Set the leave channel for the server.
+        :param context:
+        :param channel:
+        """
+        async with aiosqlite.connect(DB_PATH) as conn:
             c = conn.cursor()
             if channel is None:
                 # Lookup the leave channel from the GuildLeaveChannels table
@@ -395,7 +399,7 @@ class Utilities(commands.Cog, name="utilities"):
         usage="removeleavechannel"
     )
     async def remove_leave_channel(self, context: Context) -> None:
-        with aiosqlite.connect(DB_PATH) as conn:
+        async with aiosqlite.connect(DB_PATH) as conn:
             c = conn.cursor()
             # Check if leave channel is even set
             await c.execute("SELECT leave_channel_id FROM GuildSettings WHERE guild_id = ?", (context.guild.id,))
