@@ -69,10 +69,10 @@ class Music(commands.Cog, name="music"):
             for i, track in enumerate(player.queue):
                 queue.append(f"{i + 1}. {track.title} - {track.author}")
             queue = "\n".join(queue)
-            embed.add_field(name="Queue:", value=queue, inline=False)
+            embed.set_field_at(1, name="Queue:", value=queue, inline=False)
             await message.edit(embed=embed)
         else:
-            embed.add_field(name="Queue:", value="Empty", inline=False)
+            embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
             await message.edit(embed=embed)
 
     @commands.Cog.listener()
@@ -104,6 +104,7 @@ class Music(commands.Cog, name="music"):
                         message = await channel.fetch_message(message_id[0])
                         embed = message.embeds[0]
                         embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
+                        embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
                         embed.set_thumbnail(
                             url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
                         await message.edit(embed=embed)
@@ -315,7 +316,7 @@ class Music(commands.Cog, name="music"):
                             channel = await self.bot.fetch_channel(channel_id)
                             message = await channel.fetch_message(message_id[0])
                             embed = message.embeds[0]
-                            embed.set_field_at(1, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
+                            embed.set_field_at(2, name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
                             await message.edit(embed=embed)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
@@ -340,7 +341,7 @@ class Music(commands.Cog, name="music"):
                             channel = await self.bot.fetch_channel(channel_id)
                             message = await channel.fetch_message(message_id[0])
                             embed = message.embeds[0]
-                            embed.set_field_at(1, name="Volume:", value=f"{player.volume} (Default: 10)", inline=False)
+                            embed.set_field_at(2, name="Volume:", value=f"{player.volume} (Default: 10)", inline=False)
                             await message.edit(embed=embed)
                 except Exception as e:
                     logging.log(logging.ERROR, f"An error occurred: {str(e)}")
@@ -357,6 +358,7 @@ class Music(commands.Cog, name="music"):
         main_embed.set_thumbnail(
             url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
         main_embed.add_field(name="Now Playing:", value="Nothing", inline=False)
+        main_embed.add_field(name="Queue:", value="Empty", inline=False)
         main_embed.add_field(name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
         main_embed.set_footer(text="ByteBot DJ")
         buttons = MusicButtons(context.author, self.bot)
