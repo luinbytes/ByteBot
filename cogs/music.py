@@ -135,9 +135,20 @@ class Music(commands.Cog, name="music"):
                 return
 
         # create a text channel
-        channel = await context.guild.create_text_channel("bytebot-dj")
-        await channel.set_permissions(context.guild.default_role, send_messages=True, read_messages=True,
-                                      add_reactions=False)
+        channel = await context.guild.create_text_channel("bytebot-🎵", category=context.channel.category)
+        permissions = discord.PermissionOverwrite(
+            read_messages=True,
+            send_messages=False,
+            manage_messages=False,
+            embed_links=False,
+            add_reactions=False,
+            read_message_history=True,
+            attach_files=False,
+            mention_everyone=False,
+            use_external_emojis=False,
+            manage_threads=False,
+        )
+        await channel.set_permissions(context.guild.default_role, overwrite=permissions)
         channel_id = channel.id
 
         class MusicSearchModal(discord.ui.Modal):
