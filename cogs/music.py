@@ -91,23 +91,22 @@ class Music(commands.Cog, name="music"):
             # update the main embed to show that nothing is playing
             async with aiosqlite.connect(DB_PATH) as conn:
                 c = await conn.cursor()
-                guild_id = player.guild.id
-                channel_id = await c.execute("SELECT music_message_id FROM GuildSettings WHERE guild_id = ?",
+                guild_id = payload.player.guild.id
+                channel_id_tuple = await c.execute("SELECT music_channel_id FROM GuildSettings WHERE guild_id = ?",
+                                                   (guild_id,))
+                channel_id_tuple = await channel_id_tuple.fetchone()
+                channel_id = channel_id_tuple[0]  # Extract the channel_id from the tuple
+                message_id = await c.execute("SELECT music_message_id FROM GuildSettings WHERE guild_id = ?",
                                              (guild_id,))
-                channel_id = await channel_id.fetchone()
-                if channel_id:
-                    channel = await self.bot.fetch_channel(channel_id[0])
-                    message_id = await c.execute("SELECT music_channel_id FROM GuildSettings WHERE guild_id = ?",
-                                                 (guild_id,))
-                    message_id = await message_id.fetchone()
-                    if message_id:
-                        message = await channel.fetch_message(message_id[0])
-                        embed = message.embeds[0]
-                        embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
-                        embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
-                        embed.set_thumbnail(
-                            url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
-                        await message.edit(embed=embed)
+                message_id = await message_id.fetchone()
+                if message_id:
+                    message = await channel_id.fetch_message(message_id[0])
+                    embed = message.embeds[0]
+                    embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
+                    embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
+                    embed.set_thumbnail(
+                        url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
+                    await message.edit(embed=embed)
 
     @commands.hybrid_command(
         name="setupmusic",
