@@ -124,7 +124,7 @@ class Music(commands.Cog, name="music"):
             channel_id = await c.execute("SELECT music_channel_id FROM GuildSettings WHERE guild_id = ?",
                                          (guild_id,))
             channel_id = await channel_id.fetchone()
-            if channel_id:
+            if channel_id and channel_id[0] is not None:
                 embed = discord.Embed(
                     title="Error",
                     description=f"Music bot is already setup in this server. Channel ID: {channel_id[0]}",
