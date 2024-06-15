@@ -173,6 +173,5 @@ database.db
 .idea/sqldialects.xml
 .idea/vcs.xml
 .idea/inspectionProfiles/profiles_settings.xml
-database/database.db
-database/database.db
 /qodana.yaml
+commitmsgbase.txt
