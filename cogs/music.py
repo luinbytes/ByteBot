@@ -97,7 +97,7 @@ class Music(commands.Cog, name="music"):
                 channel_id = await channel_id.fetchone()
                 if channel_id:
                     channel = await self.bot.fetch_channel(channel_id[0])
-                    message_id = await c.execute("SELECT music_message_id FROM GuildSettings WHERE guild_id = ?",
+                    message_id = await c.execute("SELECT music_channel_id FROM GuildSettings WHERE guild_id = ?",
                                                  (guild_id,))
                     message_id = await message_id.fetchone()
                     if message_id:
