@@ -135,7 +135,7 @@ class Music(commands.Cog, name="music"):
                 return
 
         # create a text channel
-        channel = await context.guild.create_text_channel("bytebot-🎵", category=context.channel.category)
+        channel = await context.guild.create_text_channel("bytebot-🎵")
         permissions = discord.PermissionOverwrite(
             read_messages=True,
             send_messages=False,
