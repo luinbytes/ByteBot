@@ -99,14 +99,18 @@ class Music(commands.Cog, name="music"):
                 message_id = await c.execute("SELECT music_message_id FROM GuildSettings WHERE guild_id = ?",
                                              (guild_id,))
                 message_id = await message_id.fetchone()
-                if message_id:
-                    message = await channel_id.fetch_message(message_id[0])
-                    embed = message.embeds[0]
-                    embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
-                    embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
-                    embed.set_thumbnail(
-                        url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
-                    await message.edit(embed=embed)
+                channel = self.bot.get_channel(channel_id)
+                if channel and message_id:
+                    try:
+                        message = await channel.fetch_message(message_id[0])
+                        embed = message.embeds[0]
+                        embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
+                        embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
+                        embed.set_thumbnail(
+                            url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
+                        await message.edit(embed=embed)
+                    except discord.NotFound:
+                        print(f"Message with ID {message_id[0]} not found.")
 
     @commands.hybrid_command(
         name="setupmusic",
