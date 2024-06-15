@@ -203,6 +203,29 @@ class Music(commands.Cog, name="music"):
                 if not player.playing and player.queue:
                     await player.play(player.queue.get(), volume=self.volume)
 
+                if player.playing and player.queue:
+                    async with aiosqlite.connect(DB_PATH) as conn:
+                        c = await conn.cursor()
+                        guild_id = player.guild.id
+                        channel_id = await c.execute("SELECT music_channel_id FROM GuildSettings WHERE guild_id = ?",
+                                                     (guild_id,))
+                        channel_id = await channel_id.fetchone()
+                        if channel_id:
+                            channel = await self.bot.fetch_channel(channel_id[0])
+                            message_id = await c.execute(
+                                "SELECT music_message_id FROM GuildSettings WHERE guild_id = ?",
+                                (guild_id,))
+                            message_id = await message_id.fetchone()
+                            if message_id:
+                                message = await channel.fetch_message(message_id[0])
+                                embed = message.embeds[0]
+                                queue = []
+                                for i, track in enumerate(player.queue):
+                                    queue.append(f"{i + 1}. {track.title} - {track.author}")
+                                queue = "\n".join(queue)
+                                embed.set_field_at(1, name="Queue:", value=queue, inline=False)
+                                await message.edit(embed=embed)
+
                 volume_global = self.volume
 
             async def pause_music(self, guild_id):
