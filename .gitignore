@@ -175,3 +175,4 @@ database.db
 .idea/inspectionProfiles/profiles_settings.xml
 database/database.db
 database/database.db
+/qodana.yaml

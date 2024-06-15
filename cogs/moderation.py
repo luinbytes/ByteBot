@@ -565,7 +565,7 @@ class Moderation(commands.Cog, name="moderation"):
     async def on_raw_reaction_add(self, payload):
 
         # Get starboard channels and minimum reactions from the database
-        result = guild_starboard_channels(self, payload.guild_id)
+        result = await guild_starboard_channels(self, payload.guild_id)
         if result:
             starboard_guild_id, starboard_channel_id, min_reactions = result[0]
 
