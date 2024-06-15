@@ -127,7 +127,7 @@ class Music(commands.Cog, name="music"):
             if channel_id:
                 embed = discord.Embed(
                     title="Error",
-                    description="Music bot is already setup in this server.",
+                    description=f"Music bot is already setup in this server. Channel ID: {channel_id[0]}",
                     color=discord.Colour.red()
                 )
                 await context.send(embed=embed)
