@@ -455,7 +455,7 @@ class Utilities(commands.Cog, name="utilities"):
     async def help(self, context: Context, category: str = None) -> None:
         db_conn = sqlite3.connect(DB_PATH)
         db = db_conn.cursor()
-        prefix = self.guild_prefix(context.guild.id)
+        prefix = await self.guild_prefix(context.guild.id)
         embed = discord.Embed(
             title="Help", description="List of available categories:", color=0xBEBEFE
         )
