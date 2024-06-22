@@ -14,20 +14,6 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 
-async def guild_prefix(db, guild_id, prefix=None):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        c = await conn.cursor()
-        if prefix is not None:
-            # Write to the table
-            await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
-            await conn.commit()
-        else:
-            # Read from the table
-            await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
-            row = await c.fetchone()
-            return row[0] if row else None
-
-
 class Utilities(commands.Cog, name="utilities"):
     def __init__(self, bot) -> None:
         self.bot = bot
@@ -241,7 +227,7 @@ class Utilities(commands.Cog, name="utilities"):
 
         :param context: The hybrid command context.
         """
-        prefix = guild_prefix(self, context.guild.id)
+        prefix = self.guild_prefix(context.guild.id)
         if prefix is None:
             prefix = "!"
 
@@ -469,7 +455,7 @@ class Utilities(commands.Cog, name="utilities"):
     async def help(self, context: Context, category: str = None) -> None:
         db_conn = sqlite3.connect(DB_PATH)
         db = db_conn.cursor()
-        prefix = self.guild_prefix(db, context.guild.id)
+        prefix = self.guild_prefix(context.guild.id)
         embed = discord.Embed(
             title="Help", description="List of available categories:", color=0xBEBEFE
         )
@@ -671,6 +657,19 @@ class Utilities(commands.Cog, name="utilities"):
                 )
                 embed.set_footer(text="ByteBot - THE Mediocre Discord Bot", icon_url=self.bot.user.avatar.url)
                 await channel.send(embed=embed)
+
+    async def guild_prefix(db, guild_id, prefix=None):
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            if prefix is not None:
+                # Write to the table
+                await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+                await conn.commit()
+            else:
+                # Read from the table
+                await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+                row = await c.fetchone()
+                return row[0] if row else None
 
 
 async def setup(bot) -> None:
