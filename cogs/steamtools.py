@@ -525,7 +525,8 @@ class SteamTools(commands.Cog, name="steamtools"):
     async def check_bans(self):
         async with aiosqlite.connect(DB_PATH) as conn:
             async with conn.cursor() as cursor:
-                await cursor.execute('SELECT * FROM GuildSteamBans')
+                await cursor.execute(
+                    'SELECT * FROM GuildSteamBans')
                 rows = await cursor.fetchall()
 
         for row in rows:
@@ -545,117 +546,15 @@ class SteamTools(commands.Cog, name="steamtools"):
             new_days_since_last_ban = player_info['DaysSinceLastBan']
             new_number_of_game_bans = player_info['NumberOfGameBans']
             new_economy_ban = player_info['EconomyBan']
-            # print(f"Old Community Banned: {old_community_banned}")
-            # print(f"New Community Banned: {new_community_banned}")
-            # print(f"Old VAC Banned: {old_vac_banned}")
-            # print(f"New VAC Banned: {new_vac_banned}")
-            # print(f"Old Number of VAC Bans: {old_number_of_vac_bans}")
-            # print(f"New Number of VAC Bans: {new_number_of_vac_bans}")
-            # print(f"Old Days Since Last Ban: {old_days_since_last_ban}")
-            # print(f"New Days Since Last Ban: {new_days_since_last_ban}")
-            # print(f"Old Number of Game Bans: {old_number_of_game_bans}")
-            # print(f"New Number of Game Bans: {new_number_of_game_bans}")
-            # print(f"Old Economy Ban: {old_economy_ban}")
-            # print(f"New Economy Ban: {new_economy_ban}")
 
-            changes = []
-            if old_community_banned != new_community_banned:
-                changes.append(
-                    f"Community Banned: {'No' if old_community_banned == 0 else 'Yes'} ➡️ {'No' if new_community_banned == 0 else 'Yes'}")
-            if old_vac_banned != new_vac_banned:
-                changes.append(
-                    f"VAC Banned: {'No' if old_vac_banned == 0 else 'Yes'} ➡️ {'No' if new_vac_banned == 0 else 'Yes'}")
-            if old_number_of_vac_bans != new_number_of_vac_bans:
-                changes.append(f"Number of VAC Bans: {old_number_of_vac_bans} ➡️ {new_number_of_vac_bans}")
-            if old_number_of_game_bans != new_number_of_game_bans:
-                changes.append(f"Number of Game Bans: {old_number_of_game_bans} ➡️ {new_number_of_game_bans}")
-            if old_economy_ban != new_economy_ban:
-                changes.append(
-                    f"Economy Ban: {'No' if old_economy_ban == 'none' else 'Yes'} ➡️ {'No' if new_economy_ban == 'none' else 'Yes'}")
-
-            if changes:
-                async with aiohttp.ClientSession() as session:
-                    params = {'game': 'cs2', 'game_player_id': f'{steamid64}'}
-                    async with session.get(player_search_url, params=params, headers=headers) as response:
-                        data = await response.json()
-
-                    # Send an embed into the channel id for the tracked user
-                    channel = self.bot.get_channel(channel_id)
-                    tracked_by_ids = tracked_by.split(',')
-                    tracked_by_users = []
-                    for tracked_by_id in tracked_by_ids:
-                        user = await self.bot.fetch_user(int(tracked_by_id.strip()))
-                        tracked_by_users.append(user.name)
-                    description = (f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status has "
-                                   f"changed.\n\n") + "\n".join(
-                        changes)
-
-                    # Extract nickname
-                    nickname = data.get('nickname', 'Unknown')
-
-                    # Initialize the embed
-                    embed = discord.Embed(
-                        title="Ban Update [VACLink]",
-                        description=description,
-                        color=discord.Color.red(),
-                        url=f"https://vaclist.net/account/{steamid64}"
-                    )
-
-                    # Check if 'errors' in data
-                    if 'errors' in data:
-                        embed.add_field(name="❌ FACEIT:", value="No FACEIT information available.", inline=False)
-                    else:
-                        # Update description
-                        description = (f"[`{steamid64}`](https://steamcommunity.com/profiles/{steamid64})'s ban status "
-                                       f"has changed.\n\n") + "\n".join(
-                            changes)
-
-                        # Fetch the names and URLs of the first 5 friends
-                        friend_links = []
-                        for friend_id in data.get('friends_ids', [])[:5]:
-                            async with session.get(f"{player_search_url}/{friend_id}",
-                                                   headers=headers) as friend_response:
-                                friend_data = await friend_response.json()
-                                friend_links.append(
-                                    f"[{friend_data.get('nickname', 'Unknown')}](https://www.faceit.com/{friend_data.get('settings', {}).get('language', '')}/players/{friend_data.get('nickname', 'Unknown')})")
-
-                        # Add fields to the embed
-                        embed.add_field(name="Changes:", value="\n".join(changes), inline=False)
-                        embed.add_field(name="\u200b", value="\u200b", inline=False)
-                        embed.add_field(name="✔️ FACEIT:", value="", inline=True)
-                        embed.add_field(name="🔗 Steam Info",
-                                        value=f"[Steam Profile](https://steamcommunity.com/profiles/{steamid64})\nSteam ID: `{data.get('platforms', {}).get('steam', '')}`\nNew Steam ID: `{data.get('new_steam_id', '')}`\nSteam ID 64: `{data.get('steam_id_64', '')}`",
-                                        inline=False)
-                        embed.add_field(name="🔫 CSGO Info",
-                                        value=f"Region: `{data.get('games', {}).get('csgo', {}).get('region', '')}`\nSkill Level: `{data.get('games', {}).get('csgo', {}).get('skill_level', '')}`\nFaceit ELO: `{data.get('games', {}).get('csgo', {}).get('faceit_elo', '')}`",
-                                        inline=False)
-                        embed.add_field(name="🎮 CS2 Info",
-                                        value=f"Region: `{data.get('games', {}).get('cs2', {}).get('region', '')}`\nSkill Level: `{data.get('games', {}).get('cs2', {}).get('skill_level', '')}`\nFaceit ELO: `{data.get('games', {}).get('cs2', {}).get('faceit_elo', '')}`",
-                                        inline=False)
-                        embed.add_field(name="👥 Friends", value=", ".join(friend_links) + " and more...",
-                                        inline=False)  # Display only first 5 friends
-
-                        # Add FACEIT profile link
-                        embed.add_field(name="",
-                                        value=f"[FACEIT Profile](https://www.faceit.com/en/players/{nickname})",
-                                        inline=False)
-
-                    # Set footer
-                    embed.set_footer(text=f"Tracked by {' '.join(tracked_by_users)}")
-                    tracked_by_mentions = []
-                    for tracked_by_id in tracked_by_ids:
-                        user = await self.bot.fetch_user(int(tracked_by_id.strip()))
-                        tracked_by_mentions.append(user.mention)
-
-                    # Only send the message if there are mentions
-                    if tracked_by_mentions:
-                        await channel.send(f"{' '.join(tracked_by_mentions)}", embed=embed)
-
-                # Update the info in the database for the next check
-                await cursor.execute(
-                    'UPDATE GuildSteamBans SET CommunityBanned = ?, VACBanned = ?, NumberOfVACBans = ?, DaysSinceLastBan = ?, NumberOfGameBans = ?, EconomyBan = ? WHERE guild_id = ? AND steamid_64 = ?',
-                    (new_community_banned, new_vac_banned, new_number_of_vac_bans, new_days_since_last_ban,
-                     new_number_of_game_bans, new_economy_ban, guild_id, steamid64))
+            # Open a new connection for each row
+            async with aiosqlite.connect(DB_PATH) as conn:
+                async with conn.cursor() as cursor:
+                    # Update the info in the database for the next check
+                    await cursor.execute(
+                        'UPDATE GuildSteamBans SET CommunityBanned = ?, VACBanned = ?, NumberOfVACBans = ?, DaysSinceLastBan = ?, NumberOfGameBans = ?, EconomyBan = ? WHERE guild_id = ? AND steamid_64 = ?',
+                        (new_community_banned, new_vac_banned, new_number_of_vac_bans, new_days_since_last_ban,
+                         new_number_of_game_bans, new_economy_ban, guild_id, steamid64))
 
     @commands.hybrid_command(
         name="faceit",
