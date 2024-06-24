@@ -119,45 +119,11 @@ class Music(commands.Cog, name="music"):
 
             volume_global = self.volume
 
-        async def pause_music(self, guild_id):
-            context = await self.bot.get_context(self.user)
-            player: wavelink.Player = cast(
-                wavelink.Player,
-                context.guild.voice_client
-            )
-            await player.pause(not player.paused)
-
-        async def skip_music(self, guild_id):
-            context = await self.bot.get_context(self.user)
-            player: wavelink.Player = cast(
-                wavelink.Player,
-                context.guild.voice_client
-            )
-            self.player = player
-            await player.stop()
-
-        async def connect_to_channel(self, channel):
-            context = await self.bot.get_context(self.user)
-            player: wavelink.Player = cast(
-                wavelink.Player,
-                context.guild.voice_client
-            )
-            self.player = player
-            await player.connect(channel.id)
-
-        async def disconnect_from_channel(self, guild_id):
-            context = await self.bot.get_context(self.user)
-            player: wavelink.Player = cast(
-                wavelink.Player,
-                context.guild.voice_client
-            )
-            await player.disconnect()
-
         @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green, row=1)
         async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(self.user)
+                context = await self.bot.get_context(interaction.user)
                 player: wavelink.Player = cast(
                     wavelink.Player,
                     context.guild.voice_client
@@ -170,7 +136,7 @@ class Music(commands.Cog, name="music"):
         async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(self.user)
+                context = await self.bot.get_context(interaction.user)
                 player: wavelink.Player = cast(
                     wavelink.Player,
                     context.guild.voice_client
@@ -183,7 +149,7 @@ class Music(commands.Cog, name="music"):
         async def volume_down(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(self.user)
+                context = await self.bot.get_context(interaction.user)
                 channel_id = context.channel.id
                 player: wavelink.Player = cast(
                     wavelink.Player,
@@ -210,7 +176,7 @@ class Music(commands.Cog, name="music"):
         async def volume_up(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(self.user)
+                context = await self.bot.get_context(interaction.user)
                 player: wavelink.Player = cast(
                     wavelink.Player,
                     context.guild.voice_client
@@ -265,7 +231,7 @@ class Music(commands.Cog, name="music"):
             if message_id:
                 channel = await self.bot.fetch_channel(channel_id)
                 message = await channel.fetch_message(message_id[0])
-                buttons = self.MusicButtons(self.current_context.author, self.bot)
+                buttons = self.MusicButtons(payload.player.guild.me, self.bot)
                 embed = message.embeds[0]
                 embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track.author} - {track_duration}",
                                    inline=False)
@@ -317,7 +283,7 @@ class Music(commands.Cog, name="music"):
                 if channel and message_id:
                     try:
                         message = await channel.fetch_message(message_id[0])
-                        buttons = self.MusicButtons(self.current_context.author, self.bot)
+                        buttons = self.MusicButtons(payload.player.guild.me, self.bot)
                         embed = message.embeds[0]
                         embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
                         embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
