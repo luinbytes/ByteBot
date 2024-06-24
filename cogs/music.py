@@ -64,7 +64,7 @@ class Music(commands.Cog, name="music"):
 
             destination = member.voice.channel
 
-            if not context.author.voice.channel.permissions_for(
+            if not member.voice.channel.permissions_for(
                     context.guild.me).connect or not context.author.voice.channel.permissions_for(
                 context.guild.me).speak:
                 await interaction.followup.send(
