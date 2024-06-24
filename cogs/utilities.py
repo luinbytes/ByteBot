@@ -640,7 +640,7 @@ class Utilities(commands.Cog, name="utilities"):
                 color=0xBEBEFE,
             )
             embed.set_image(url=gif)
-            embed.set_footer(text="ByteBot - THE Mediocre Discord Bot", icon_url=self.bot.user.avatar.url)
+            embed.set_footer(text="ByteBot - THE Mediocre Discord Bot!", icon_url=self.bot.user.avatar.url)
             await channel.send(f"{member.mention} has joined!", embed=embed)
 
     @commands.Cog.listener()
