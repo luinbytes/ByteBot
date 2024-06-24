@@ -54,12 +54,13 @@ class Music(commands.Cog, name="music"):
         async def play_music(self, interaction, query):
             logging.log(logging.INFO, f"Playing {query}")
             query = query.strip('<>')
-            context = await self.bot.get_context(interaction.message)
-            destination = context.author.voice.channel
+            context = await self.bot.get_context(interaction)
 
             if not context.author.voice or not context.author.voice.channel:
-                # Handle the case when the user is not connected to a voice channel
+                await interaction.followup.send("You are not connected to a voice channel.", ephemeral=True)
                 return
+
+            destination = context.author.voice.channel
 
             if not context.author.voice.channel.permissions_for(
                     context.guild.me).connect or not context.author.voice.channel.permissions_for(
