@@ -123,10 +123,9 @@ class Music(commands.Cog, name="music"):
         async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(interaction.user)
                 player: wavelink.Player = cast(
                     wavelink.Player,
-                    context.guild.voice_client
+                    interaction.guild.voice_client
                 )
                 await player.pause(not player.paused)
             except Exception as e:
@@ -148,11 +147,10 @@ class Music(commands.Cog, name="music"):
         async def volume_down(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(interaction.user)
-                channel_id = context.channel.id
+                channel_id = interaction.channel.id
                 player: wavelink.Player = cast(
                     wavelink.Player,
-                    context.guild.voice_client
+                    interaction.guild.voice_client
                 )
                 await player.set_volume(player.volume - 5)
                 volume_global = player.volume
@@ -175,12 +173,11 @@ class Music(commands.Cog, name="music"):
         async def volume_up(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(interaction.user)
                 player: wavelink.Player = cast(
                     wavelink.Player,
-                    context.guild.voice_client
+                    interaction.guild.voice_client
                 )
-                channel_id = context.channel.id
+                channel_id = interaction.channel.id
                 await player.set_volume(player.volume + 5)
                 volume_global = player.volume
                 async with aiosqlite.connect(DB_PATH) as conn:
