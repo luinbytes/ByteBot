@@ -440,6 +440,7 @@ class Moderation(commands.Cog, name="moderation"):
         description="Deletes a user selected amount of messages from the current channel.",
     )
     @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
     @app_commands.describe(
         amount="The amount of messages that should be deleted. The maximum amount of messages that can be deleted is 100."
     )
@@ -447,6 +448,7 @@ class Moderation(commands.Cog, name="moderation"):
         """
         Purges a number of messages.
         """
+        await context.defer()
         if 0 < amount <= 100:
             await context.channel.purge(limit=amount + 1)
             embed = discord.Embed(
