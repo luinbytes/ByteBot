@@ -253,7 +253,7 @@ class Music(commands.Cog, name="music"):
             await message.edit(embed=embed)
         else:
             embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
-            await message.edit(embed=embed, view=message.components)
+            await message.edit(embed=embed, view=buttons)
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackStartEventPayload) -> None:
