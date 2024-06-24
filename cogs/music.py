@@ -19,6 +19,20 @@ DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 volume_global = 10
 
 
+async def guild_prefix(db, guild_id, prefix=None):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        c = await conn.cursor()
+        if prefix is not None:
+            # Write to the table
+            await c.execute("UPDATE GuildSettings SET prefix = ? WHERE guild_id = ?", (prefix, guild_id))
+            await conn.commit()
+        else:
+            # Read from the table
+            await c.execute("SELECT prefix FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
+            return row[0] if row else None
+
+
 class MusicSearchModal(discord.ui.Modal):
     def __init__(self, view, bot):
         super().__init__(title="Search for a song")
@@ -330,7 +344,7 @@ class Music(commands.Cog, name="music"):
         )
         await channel.set_permissions(context.guild.default_role, overwrite=permissions)
         channel_id = channel.id
-        prefix = await self.bot.get_prefix(context.message)
+        prefix = await guild_prefix(conn, guild_id)
 
         # send music control embed to the channel
         main_embed = discord.Embed(
