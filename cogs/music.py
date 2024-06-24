@@ -52,6 +52,9 @@ class Music(commands.Cog, name="music"):
             if message_id:
                 channel = await self.bot.fetch_channel(channel_id)
                 message = await channel.fetch_message(message_id[0])
+                view = discord.ui.View()
+                for component in message.components:
+                    view.add_item(component)
                 embed = message.embeds[0]
                 embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track.author} - {track_duration}",
                                    inline=False)
@@ -61,7 +64,7 @@ class Music(commands.Cog, name="music"):
                 else:
                     embed.set_thumbnail(
                         url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
-                await message.edit(embed=embed, view=message.components)
+                await message.edit(embed=embed, view=view)
 
         # Add embed elements to the main embed with the queue
         if player.queue:
@@ -103,12 +106,15 @@ class Music(commands.Cog, name="music"):
                 if channel and message_id:
                     try:
                         message = await channel.fetch_message(message_id[0])
+                        view = discord.ui.View()
+                        for component in message.components:
+                            view.add_item(component)
                         embed = message.embeds[0]
                         embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
                         embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
                         embed.set_thumbnail(
                             url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
-                        await message.edit(embed=embed, view=message.components)
+                        await message.edit(embed=embed, view=view)
                     except discord.NotFound:
                         print(f"Message with ID {message_id[0]} not found.")
 
