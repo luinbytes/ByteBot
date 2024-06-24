@@ -624,23 +624,24 @@ class Utilities(commands.Cog, name="utilities"):
             c = await conn.cursor()
             await c.execute("SELECT welcome_channel_id FROM GuildSettings WHERE guild_id = ?", (member.guild.id,))
             row = await c.fetchone()
-            if row:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get("https://purrbot.site/api/img/sfw/dance/gif") as request:
-                        if request.status == 200:
-                            data = await request.json()
-                            gif = data["link"]
-                        else:
-                            gif = None
-                channel = member.guild.get_channel(row[0])
-                embed = discord.Embed(
-                    title=f"{member.guild.name}",
-                    description=f"Welcome to {member.guild.name}, {member.mention}!",
-                    color=0xBEBEFE,
-                )
-                embed.set_image(url=gif)
-                embed.set_footer(text="ByteBot - THE Mediocre Discord Bot", icon_url=self.bot.user.avatar.url)
-                await channel.send(f"{member.mention} has joined!", embed=embed)
+            if row is None:
+                return  # No welcome channel set, so just return
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://purrbot.site/api/img/sfw/dance/gif") as request:
+                    if request.status == 200:
+                        data = await request.json()
+                        gif = data["link"]
+                    else:
+                        gif = None
+            channel = member.guild.get_channel(row[0])
+            embed = discord.Embed(
+                title=f"{member.guild.name}",
+                description=f"Welcome to {member.guild.name}, {member.mention}!",
+                color=0xBEBEFE,
+            )
+            embed.set_image(url=gif)
+            embed.set_footer(text="ByteBot - THE Mediocre Discord Bot", icon_url=self.bot.user.avatar.url)
+            await channel.send(f"{member.mention} has joined!", embed=embed)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
