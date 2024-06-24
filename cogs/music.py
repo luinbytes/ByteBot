@@ -31,9 +31,9 @@ class MusicSearchModal(discord.ui.Modal):
         await interaction.response.defer()
         try:
             query = self.response.value
-            await self.view.play_music(interaction.guild_id, query)
+            await self.view.play_music(interaction, query)  # Pass the interaction object
         except Exception as e:
-            await interaction.response.send_message(
+            await interaction.followup.send(  # Use followup.send instead of response.send_message
                 f"An error occurred - Please send this to @0x6c75: {traceback.format_exc()}", ephemeral=True)
 
 
@@ -51,10 +51,10 @@ class Music(commands.Cog, name="music"):
             self.bot = bot
             self.wavelink = self.bot.wavelink
 
-        async def play_music(self, guild_id, query):
+        async def play_music(self, interaction, query):
             logging.log(logging.INFO, f"Playing {query}")
             query = query.strip('<>')
-            context = await self.bot.get_context(self.user)
+            context = await self.bot.get_context(interaction.message)
             destination = context.author.voice.channel
 
             if not context.author.voice or not context.author.voice.channel:
