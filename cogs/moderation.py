@@ -36,7 +36,7 @@ async def guild_autoroles(db, guild_id, role_id=None):
         if role_id is not None:
             # Write to the table
             await db.execute("UPDATE GuildSettings SET autorole_id = ? WHERE guild_id = ?", (role_id, guild_id))
-            await db.commit()
+            await db_conn.commit()
         else:
             # Read from the table
             await db.execute("SELECT autorole_id FROM GuildSettings WHERE guild_id = ?", (guild_id,))
