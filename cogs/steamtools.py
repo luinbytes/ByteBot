@@ -254,6 +254,7 @@ class SteamTools(commands.Cog, name="steamtools"):
                     return
                 await cursor.execute('UPDATE GuildSettings SET steam_ban_channel_id = ? WHERE guild_id = ?',
                                      (channel_id, guild_id))
+                await conn.commit()
 
         embed = discord.Embed(
             title="Ban Channel Set",
