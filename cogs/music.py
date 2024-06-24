@@ -136,10 +136,9 @@ class Music(commands.Cog, name="music"):
         async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
             await interaction.response.defer()
             try:
-                context = await self.bot.get_context(interaction.user)
                 player: wavelink.Player = cast(
                     wavelink.Player,
-                    context.guild.voice_client
+                    interaction.guild.voice_client
                 )
                 await player.stop()
             except Exception as e:
