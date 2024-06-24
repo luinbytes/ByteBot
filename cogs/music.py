@@ -58,11 +58,11 @@ class Music(commands.Cog, name="music"):
             guild = interaction.guild
             member = guild.get_member(interaction.user.id)
 
-            if not member.author.voice or not member.author.voice.channel:
+            if not member.voice or not member.voice.channel:
                 await interaction.followup.send("You are not connected to a voice channel.", ephemeral=True)
                 return
 
-            destination = context.author.voice.channel
+            destination = member.voice.channel
 
             if not context.author.voice.channel.permissions_for(
                     context.guild.me).connect or not context.author.voice.channel.permissions_for(
