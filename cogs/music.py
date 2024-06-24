@@ -65,7 +65,8 @@ class Music(commands.Cog, name="music"):
             if not context.author.voice.channel.permissions_for(
                     context.guild.me).connect or not context.author.voice.channel.permissions_for(
                 context.guild.me).speak:
-                # Handle the case when the bot does not have permission to connect or speak in the voice channel
+                await interaction.followup.send(
+                    "I don't have permission to connect and speak in your voice channel.", ephemeral=True)
                 return
 
             if context.guild.voice_client is None:
