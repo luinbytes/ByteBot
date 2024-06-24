@@ -65,7 +65,7 @@ class Music(commands.Cog, name="music"):
             destination = member.voice.channel
 
             if not member.voice.channel.permissions_for(
-                    context.guild.me).connect or not context.author.voice.channel.permissions_for(
+                    context.guild.me).connect or not member.voice.channel.permissions_for(
                 context.guild.me).speak:
                 await interaction.followup.send(
                     "I don't have permission to connect and speak in your voice channel.", ephemeral=True)
