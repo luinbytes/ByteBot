@@ -7,7 +7,6 @@ from typing import cast
 import aiosqlite
 import discord
 import wavelink
-from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 from wavelink.exceptions import LavalinkLoadException
@@ -417,7 +416,6 @@ class Music(commands.Cog, name="music"):
         name="refreshmusic",
         description="Refresh the music bot controls.",
     )
-    @app_commands.describe("Refresh the music bot controls.")
     @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def refresh_music(self, context: Context) -> None:
         await context.defer()
