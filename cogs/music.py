@@ -54,8 +54,7 @@ class Music(commands.Cog, name="music"):
                 message = await channel.fetch_message(message_id[0])
                 view = discord.ui.View()
                 for action_row in message.components:
-                    for component in action_row.children:
-                        view.add_item(component)
+                    view.add_item(action_row)
                 embed = message.embeds[0]
                 embed.set_field_at(0, name="Now Playing:", value=f"{track.title} - {track.author} - {track_duration}",
                                    inline=False)
@@ -109,8 +108,7 @@ class Music(commands.Cog, name="music"):
                         message = await channel.fetch_message(message_id[0])
                         view = discord.ui.View()
                         for action_row in message.components:
-                            for component in action_row.children:
-                                view.add_item(component)
+                            view.add_item(action_row)
                         embed = message.embeds[0]
                         embed.set_field_at(0, name="Now Playing:", value="Nothing", inline=False)
                         embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
