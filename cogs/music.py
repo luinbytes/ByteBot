@@ -55,8 +55,10 @@ class Music(commands.Cog, name="music"):
             logging.log(logging.INFO, f"Playing {query}")
             query = query.strip('<>')
             context = await self.bot.get_context(interaction.message)
+            guild = interaction.guild
+            member = guild.get_member(interaction.user.id)
 
-            if not context.author.voice or not context.author.voice.channel:
+            if not member.author.voice or not member.author.voice.channel:
                 await interaction.followup.send("You are not connected to a voice channel.", ephemeral=True)
                 return
 
