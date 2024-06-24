@@ -61,7 +61,7 @@ class Music(commands.Cog, name="music"):
                 else:
                     embed.set_thumbnail(
                         url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
-                await message.edit(embed=embed)
+                await message.edit(embed=embed, view=message.components)
 
         # Add embed elements to the main embed with the queue
         if player.queue:
@@ -73,7 +73,7 @@ class Music(commands.Cog, name="music"):
             await message.edit(embed=embed)
         else:
             embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
-            await message.edit(embed=embed)
+            await message.edit(embed=embed, view=message.components)
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackStartEventPayload) -> None:
@@ -108,7 +108,7 @@ class Music(commands.Cog, name="music"):
                         embed.set_field_at(1, name="Queue:", value="Empty", inline=False)
                         embed.set_thumbnail(
                             url="https://community.mp3tag.de/uploads/default/original/2X/a/acf3edeb055e7b77114f9e393d1edeeda37e50c9.png")
-                        await message.edit(embed=embed)
+                        await message.edit(embed=embed, view=message.components)
                     except discord.NotFound:
                         print(f"Message with ID {message_id[0]} not found.")
 
