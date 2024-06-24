@@ -7,6 +7,7 @@ from typing import cast
 import aiosqlite
 import discord
 import wavelink
+from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 from wavelink.exceptions import LavalinkLoadException
@@ -330,6 +331,7 @@ class Music(commands.Cog, name="music"):
         )
         await channel.set_permissions(context.guild.default_role, overwrite=permissions)
         channel_id = channel.id
+        prefix = await self.bot.get_prefix(context.message)
 
         # send music control embed to the channel
         main_embed = discord.Embed(
@@ -342,7 +344,7 @@ class Music(commands.Cog, name="music"):
         main_embed.add_field(name="Now Playing:", value="Nothing", inline=False)
         main_embed.add_field(name="Queue:", value="Empty", inline=False)
         main_embed.add_field(name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
-        main_embed.set_footer(text="Interaction Failed? Please re-setup the music bot.")
+        main_embed.set_footer(text=f"Interaction Failed? Please run {prefix}refreshmusic")
         buttons = self.MusicButtons(context.author, self.bot)
 
         await channel.send(embed=main_embed, view=buttons)
@@ -410,6 +412,45 @@ class Music(commands.Cog, name="music"):
             )
             await context.send(embed=embed)
             return
+
+    @commands.hybrid_command(
+        name="refreshmusic",
+        description="Refresh the music bot controls.",
+    )
+    @app_commands.describe("Refresh the music bot controls.")
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    async def refresh_music(self, context: Context) -> None:
+        await context.defer()
+        # grab the guild id
+        guild_id = context.guild.id
+
+        # fetch the music message from the database
+        async with aiosqlite.connect(DB_PATH) as conn:
+            c = await conn.cursor()
+            message_id = await c.execute("SELECT music_message_id FROM GuildSettings WHERE guild_id = ?", (guild_id,))
+            message_id = await message_id.fetchone()
+            if message_id:
+                channel_id = await c.execute("SELECT music_channel_id FROM GuildSettings WHERE guild_id = ?",
+                                             (guild_id,))
+                channel_id = await channel_id.fetchone()
+                if channel_id:
+                    channel = await self.bot.fetch_channel(channel_id[0])
+                    message = await channel.fetch_message(message_id[0])
+                    buttons = self.MusicButtons(context.author, self.bot)
+                    await message.edit(view=buttons)
+                    embed = discord.Embed(
+                        title="Success",
+                        description="Music bot controls refreshed successfully.",
+                        color=discord.Colour.green()
+                    )
+                    await context.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="Error",
+                    description="Music bot is not setup in this server.",
+                    color=discord.Colour.red()
+                )
+                await context.send(embed=embed)
 
 
 async def setup(bot) -> None:
