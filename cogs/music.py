@@ -342,7 +342,7 @@ class Music(commands.Cog, name="music"):
         main_embed.add_field(name="Now Playing:", value="Nothing", inline=False)
         main_embed.add_field(name="Queue:", value="Empty", inline=False)
         main_embed.add_field(name="Volume:", value=f"{volume_global} (Default: 10)", inline=False)
-        main_embed.set_footer(text="ByteBot DJ")
+        main_embed.set_footer(text="Interaction Failed? Please re-setup the music bot.")
         buttons = self.MusicButtons(context.author, self.bot)
 
         await channel.send(embed=main_embed, view=buttons)
