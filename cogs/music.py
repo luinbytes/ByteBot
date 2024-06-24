@@ -42,9 +42,14 @@ class Music(commands.Cog, name="music"):
         self.bot = bot
         self.channel = None
 
+    class PersistentViewStore(discord.ui.ViewStore):
+        async def get_view(self, name: str, view_id: str, interaction: discord.Interaction):
+            if name == 'MusicButtons':
+                return Music.MusicButtons(interaction.user, interaction.bot)
+
     class MusicButtons(discord.ui.View):
         def __init__(self, user, bot):
-            super().__init__()
+            super().__init__(timeout=None)
             self.user = user
             self.player = None
             self.volume = 10
@@ -413,4 +418,6 @@ class Music(commands.Cog, name="music"):
 
 
 async def setup(bot) -> None:
+    music_cog = Music(bot)
     await bot.add_cog(Music(bot))
+    bot.view_store = music_cog.PersistentViewStore()
