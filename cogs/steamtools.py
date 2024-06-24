@@ -657,6 +657,7 @@ class SteamTools(commands.Cog, name="steamtools"):
                             'UPDATE GuildSteamBans SET CommunityBanned = ?, VACBanned = ?, NumberOfVACBans = ?, DaysSinceLastBan = ?, NumberOfGameBans = ?, EconomyBan = ? WHERE guild_id = ? AND steamid_64 = ?',
                             (new_community_banned, new_vac_banned, new_number_of_vac_bans, new_days_since_last_ban,
                              new_number_of_game_bans, new_economy_ban, guild_id, steamid64))
+                        await conn.commit()
 
     @commands.hybrid_command(
         name="faceit",
