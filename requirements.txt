@@ -1,9 +1,0 @@
-aiohttp~=3.9.5
-aiosqlite~=0.20.0
-python-dotenv~=1.0.1
-pillow~=10.3.0
-steam~=1.4.4
-wavelink==3.3.0
-discord~=2.3.2
-pip~=24.0
-attrs~=23.2.0
