@@ -205,12 +205,14 @@ class DiscordBot(commands.Bot):
                         "DEV MODE = [ON] >B)", "Something is probably broken rn", "Don't expect me to work rn! :D",
                         "Thanks GitHub Copilot <3", "LLM's took my job."]
         else:
-            statuses = ["with knives rn", "Counter-Strike 2", "with firearms.", "Vote for me on top.gg!",
-                        "You should gamble...", "Lunar Client (ew)", "He actually remembered...",
-                        "League of Leg... Nope nvm.", "Minecraft 2", "Grand Theft Auto 7", "Half-Life 2.9 D:",
-                        "That fucking dota card game lmao", "Overwatch 1 season 3 (good times)",
-                        "0x6c75 smells really bad.", "add @iconize for free v-bucks :3"]
-        await self.change_presence(activity=discord.Game(random.choice(statuses)))
+            statuses = ["Dustbowl - Casual", "2Fort - Casual", "Upward - Casual", "Badwater - Casual", "Barnblitz - Casual",
+                        "Borneo - Casual", "Gorge - Casual", "Granary - Casual", "Gravel Pit - Casual", "Hightower - Casual",
+                        "Junction - Casual", "Kong King - Casual", "Lakeside - Casual", "Mann Manor - Casual",
+                        "Mercenary Park - Casual", "Mossrock - Casual", "Mountain Lab - Casual", "Powerhouse - Casual",
+                        "Process - Casual", "Snakewater - Casual", "Steel - Casual", "Swiftwater - Casual", "Thunder Mountain - Casual",
+                        "Upward - Casual", "Viaduct - Casual", "Yukon - Casual", "Badlands - Casual", "Barnblitz - Casual",
+                        "Doomsday - Casual", "Enclosure - Casual", "Foundry - Casual", "Gold Rush - Casual", "Gorge - Casual"]
+            await self.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"Team Fortress 2 - {random.choice(statuses)}"))
         # channel = self.get_channel(1240624554544726037)
         # random_message = random.choice(
         #     ["Meine Wurstnudel tut weh! Bitte, oh bitte reiben Sie sie!", "Ich bin ein kleiner, dummer Bot!", "Gott, du riechst so gut......", "Ich mag es, wie du mich benutzt, um deine Ersparnisse zu verspielen. Das macht mich wirklich an.", "Du solltest wetten :)", "BLACKJACK JETZT SPIELEN", "Ich hoffe wirklich, dass Sie von einer hohen Klippe fallen."]

@@ -63,7 +63,6 @@ async def get_steam_profile_name(steamid64):
             data = await response.json()
             return data['response']['players'][0]['personaname']
 
-
 class SteamTools(commands.Cog, name="steamtools"):
     def __init__(self, bot):
         self.bot = bot
@@ -92,45 +91,119 @@ class SteamTools(commands.Cog, name="steamtools"):
             await context.send(embed=embed)
             return
         
+        has_bans = False
+
         async with aiohttp.ClientSession() as session:
             # Get sourcebans info
             async with session.get(get_sourcebans.format(steamids=steamid64)) as response:
                 data = await response.json()
                 if data['response']:
-                    sourcebans = data['response'][0]
-                    ban_reason = sourcebans['BanReason']
-                    ban_timestamp = sourcebans['BanTimestamp']
-                    server = sourcebans['Server']
-                    current_state = sourcebans['CurrentState']
+                    sourcebans = data['response']
+                    bans_info = []
+                    for ban in sourcebans:
+                        ban_info = {
+                            "name_at_ban": ban['Name'],
+                            "ban_reason": ban['BanReason'],
+                            "ban_timestamp": datetime.utcfromtimestamp(ban['BanTimestamp']).strftime('%d-%m-%Y @ %H:%M:%S'),
+                            "unban_timestamp": datetime.utcfromtimestamp(ban['UnbanTimestamp']).strftime('%d-%m-%Y @ %H:%M:%S') if ban['UnbanTimestamp'] != 0 else "N/A",
+                            "unban_reason": ban['UnbanReason'],
+                            "server": ban['Server'],
+                            "current_state": ban['CurrentState']
+                        }
+                        bans_info.append(ban_info)
+                    has_bans = True
                 else:
-                    ban_reason = "No bans found."
-                    ban_timestamp = "N/A"
-                    server = "N/A"
-                    current_state = "N/A"
+                    bans_info = [{
+                        "name_at_ban": "N/A",
+                        "ban_reason": "No bans found.",
+                        "ban_timestamp": "N/A",
+                        "unban_timestamp": "N/A",
+                        "server": "N/A",
+                        "current_state": "N/A"
+                    }]
 
             # Get player summaries
             async with session.get(get_player_summaries + f"key={steam_api_key}&steamids={steamid64}") as response:
                 data = await response.json()
-                player_summaries = data['response']['players'][0]
-                profile_name = player_summaries['personaname']
-                profile_url = player_summaries['profileurl']
-                avatar_url = player_summaries['avatarfull']
-                time_created = datetime.utcfromtimestamp(player_summaries['timecreated']).strftime('%Y-%m-%d %H:%M:%S')
+                if data is not None:
+                        community_visibility_state_map = {
+                            1: "Private",
+                            2: "Friends Only",
+                            3: "Public"
+                        }
+
+                        profile_state_map = {
+                            0: "Not setup",
+                            1: "Setup"
+                        }
+
+                        persona_state_map = {
+                            0: "Offline",
+                            1: "Online",
+                            2: "Busy",
+                            3: "Away",
+                            4: "Snooze",
+                            5: "Looking to trade",
+                            6: "Looking to play"
+                        }
+
+                        profile = data['response']['players'][0]
+                        profile_name = profile['personaname']
+                        profile_url = profile['profileurl']
+                        avatar_url = profile['avatarfull']
+                        time_created = datetime.utcfromtimestamp(profile['timecreated']).strftime('%d-%m-%Y @ %H:%M:%S')
+                        community_visibility_state = community_visibility_state_map[profile['communityvisibilitystate']]
+                        profile_state = profile_state_map[profile['profilestate']]
+                        persona_state = persona_state_map[profile['personastate']]
 
             # Create embed
-            embed = discord.Embed(
-                title=f"{profile_name}'s Steam Profile",
-                description=f"[Profile URL]({profile_url})",
-                color=discord.Color.blue()
-            )
+            if has_bans:
+                embed = discord.Embed(
+                    title=f"[FLAGGED] {profile_name}",
+                    url=profile_url,
+                    description=f"[SteamHistory](https://steamhistory.net/id/{steamid64}) bans detected.",
+                    color=discord.Color.red()
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"{profile_name}",
+                    url=profile_url,
+                    description=f"[SteamHistory](https://steamhistory.net/id/{steamid64}) no bans detected.",
+                    color=discord.Color.blue()
+                )
             embed.set_thumbnail(url=avatar_url)
-            embed.add_field(name="Profile Name", value=profile_name, inline=True)
-            embed.add_field(name="Profile URL", value=f"[Link]({profile_url})", inline=True)
             embed.add_field(name="Account Created", value=time_created, inline=True)
-            embed.add_field(name="Ban Reason", value=ban_reason, inline=True)
-            embed.add_field(name="Ban Timestamp", value=ban_timestamp, inline=True)
-            embed.add_field(name="Server", value=server, inline=True)
-            embed.add_field(name="Current State", value=current_state, inline=True)
+            embed.add_field(name="Community Visibility State", value=community_visibility_state, inline=True)
+            embed.add_field(name="Profile State", value=profile_state, inline=True)
+            embed.add_field(name="Persona State", value=persona_state, inline=True)
+            embed.add_field(name="\u200b", value="\u200b", inline=False)
+
+            if has_bans:
+                for ban in bans_info:
+                    if len(bans_info) == 1:
+                        embed.add_field(name="Name at Ban", value=ban['name_at_ban'], inline=True)
+                        embed.add_field(name="Ban Reason", value=ban['ban_reason'], inline=True)
+                        embed.add_field(name="Ban Timestamp", value=ban['ban_timestamp'], inline=True)
+                        if ban['current_state'] != "Permanent":
+                            embed.add_field(name="Unban Timestamp", value=ban["unban_timestamp"], inline=True)
+                        embed.add_field(name="Server", value=ban['server'], inline=True)
+                        embed.add_field(name="Current State", value=ban['current_state'], inline=True)
+                        if ban["current_state"] == "Unbanned":
+                            embed.add_field(name="Unban Reason", value=ban['unban_reason'], inline=True)
+                        embed.add_field(name="\u200b", value="\u200b", inline=False)
+                    else:
+                        embed.add_field(name="Ban #"+str(bans_info.index(ban)+1), value="", inline=False)
+                        embed.add_field(name="Name at Ban", value=ban['name_at_ban'], inline=True)
+                        embed.add_field(name="Ban Reason", value=ban['ban_reason'], inline=True)
+                        embed.add_field(name="Ban Timestamp", value=ban['ban_timestamp'], inline=True)
+                        if ban['current_state'] != "Permanent":
+                            embed.add_field(name="Unban Timestamp", value=ban["unban_timestamp"], inline=True)
+                        embed.add_field(name="Server", value=ban['server'], inline=True)
+                        embed.add_field(name="Current State", value=ban['current_state'], inline=True)
+                        if ban["current_state"] == "Unbanned":
+                            embed.add_field(name="Unban Reason", value=ban['unban_reason'], inline=True)
+                        embed.add_field(name="\u200b", value="\u200b", inline=False)
+
             embed.set_footer(text=f"Requested by {context.author.name}", icon_url=context.author.avatar)
 
             await context.send(embed=embed)
