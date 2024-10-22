@@ -61,8 +61,98 @@ async def get_steam_profile_name(steamid64):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             data = await response.json()
-            return data['response']['players'][0]['personaname']
+            if 'response' in data and 'players' in data['response']:
+                players = data['response']['players']
+                if players:
+                    return players[0]['personaname']
+            return "Unknown Player"  # Or handle this case as you see fit
+        
+async def scrape_status_command(status):
+    steamids = []
+    flaggedids = []
+    map_name = ""
+    valve_official = False
+    players = 0
+    max_players = 0
+    hostname = ""
 
+    for line in status.split("\n"):
+        print(f"Processing line: {line}")
+        if line.startswith("#") and "[U:1:" not in line:
+            print("Skipping comment line.")
+            continue
+        if "[U:1:" in line:
+            steamid = line.split("[U:1:")[1].split("]")[0]
+            steamids.append(f"[U:1:{steamid}]")
+            print(f"Found SteamID: [U:1:{steamid}]")
+        elif line.startswith("map"):
+            map_name = line.split(":")[1].strip().split(" ")[0]
+            print(f"Found map name: {map_name}")
+        elif line.startswith("tags"):
+            valve_official = "valve" in line
+            print(f"Valve official server: {valve_official}")
+        elif line.startswith("players"):
+            players_info = line.split(":")[1].strip().split(",")[0]
+            players = int(players_info.split(" ")[0])
+            max_players = int(line.split("(")[1].split(" ")[0])
+            print(f"Found players info: {players}/{max_players}")
+        elif line.startswith("hostname"):
+            hostname = line.split(":", 1)[1].strip()
+            print(f"Found hostname: {hostname}")
+
+    print("Finished scraping status command output.")
+
+    for steamid in steamids:
+        print(f"Processing SteamID: {steamid}")
+        steamid64 = SteamID(steamid).as_64
+        steam_profile_name = await get_steam_profile_name(steamid64)
+
+        async with aiohttp.ClientSession() as session:
+            # Get sourcebans info
+            async with session.get(get_sourcebans.format(steamids=steamid64)) as response:
+                data = await response.json()
+                if data['response']:
+                    sourcebans = data['response']
+                    bans_info = []
+                    for ban in sourcebans:
+                        ban_info = {
+                            "name_at_ban": ban['Name'],
+                            "ban_reason": ban['BanReason'],
+                            "ban_timestamp": datetime.utcfromtimestamp(ban['BanTimestamp']).strftime('%d-%m-%Y @ %H:%M:%S'),
+                            "unban_timestamp": datetime.utcfromtimestamp(ban['UnbanTimestamp']).strftime('%d-%m-%Y @ %H:%M:%S') if ban['UnbanTimestamp'] != 0 else "N/A",
+                            "unban_reason": ban['UnbanReason'],
+                            "server": ban['Server'],
+                            "current_state": ban['CurrentState']
+                        }
+                        flaggedids.append(steamid)
+                        bans_info.append(ban_info)
+                else:
+                    bans_info = [{
+                        "name_at_ban": "N/A",
+                        "ban_reason": "No bans found.",
+                        "ban_timestamp": "N/A",
+                        "unban_timestamp": "N/A",
+                        "server": "N/A",
+                        "current_state": "N/A"
+                    }]
+
+        
+
+    return flaggedids, map_name, valve_official, players, max_players, hostname
+
+class status_form(discord.ui.Modal, title="TF2 Status Scraper"):
+    feedback = discord.ui.TextInput(
+        label="Please input the entire status output.",
+        style=discord.TextStyle.long,
+        placeholder="Paste the output here.",
+        required=True,
+        max_length=4000,
+    )
+    async def on_submit(self, interaction: discord.Interaction):
+        self.interaction = interaction
+        self.status_output = str(self.feedback)
+        self.stop()
+    
 class SteamTools(commands.Cog, name="steamtools"):
     def __init__(self, bot):
         self.bot = bot
@@ -208,6 +298,35 @@ class SteamTools(commands.Cog, name="steamtools"):
 
             await context.send(embed=embed)
 
+    @app_commands.command(
+    name="status",
+    description="Scrapes TF2 status.",
+    )
+    async def status(self, interaction: discord.Interaction):
+        # Create and send the modal for user input
+        status = status_form()
+        await interaction.response.send_modal(status)
+
+        # Wait for the user to submit the modal
+        await status.wait()
+
+        # Interaction is still valid after the modal is submitted
+        flagged, map_name, valve_official, players, max_players, hostname = await scrape_status_command(status.status_output)
+
+        # Create the embed for the status information
+        embed = discord.Embed(
+            title="TF2 Status",
+            description=f"Hostname: {hostname}\nMap: {map_name}\nValve Official: {valve_official}\nPlayers: {players}/{max_players}",
+            color=discord.Color.blue()
+        )
+        for steamid in flagged:
+            steamid64 = SteamID(steamid).as_64
+            steam_profile_name = await get_steam_profile_name(steamid64)
+            embed.add_field(name=steam_profile_name, value=f"[SteamHistory](https://steamhistory.net/id/{steamid64})", inline=False)
+        embed.set_footer(text=f"Requested by {interaction.user.name}", icon_url=interaction.user.avatar)
+
+        # Send the response as a followup, no need to check if response is done
+        await interaction.followup.send(embed=embed)
 
 async def setup(bot) -> None:
     await bot.add_cog(SteamTools(bot))
