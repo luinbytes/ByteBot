@@ -16,9 +16,9 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DATABASE_DIR, "database.db")
 
 # Steam API Setup
-steam_api_key = "3D74A7C8126D2470FB47E835F149F45D"
-access_token = "eyAidHlwIjogIkpXVCIsICJhbGciOiAiRWREU0EiIH0.eyAiaXNzIjogInI6MEVDOV8yNDExNENFMV9DMkIyNCIsICJzdWIiOiAiNzY1NjExOTkyMjA5MDc5MDYiLCAiYXVkIjogWyAid2ViOnN0b3JlIiBdLCAiZXhwIjogMTcxNjgxNjUwMSwgIm5iZiI6IDE3MDgwOTAwMDMsICJpYXQiOiAxNzE2NzMwMDAzLCAianRpIjogIjBFRTlfMjQ3QUI4MERfMDZBNUMiLCAib2F0IjogMTcwOTgxMzI2NywgInJ0X2V4cCI6IDE3MjgwMDc5ODUsICJwZXIiOiAwLCAiaXBfc3ViamVjdCI6ICIxOTMuMzIuMjQ4LjE1OSIsICJpcF9jb25maXJtZXIiOiAiMTkzLjMyLjI0OC4xNTkiIH0.ppi6qsVFsbFaF8AoU_smHIajTOVNV5iQgggt4Zdn6xUkLewn3_3wPRBazESLvFaCteWx3PYY3QBFMtJ5o5aKBw"
-steam_id_test = "76561197964559112"
+steam_api_key = ""
+access_token = ""
+steam_id_test = ""
 
 get_player_summaries = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?"
 get_player_bans = "https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?"
@@ -30,7 +30,7 @@ player_search_url = "https://open.faceit.com/data/v4/players"
 
 headers = {
     'accept': 'application/json',
-    'Authorization': 'Bearer 65deedc2-1914-4efc-9308-a68cbe27db05'
+    'Authorization': 'Bearer ...'
 }
 
 # SteamHistory.net API Setup
@@ -52,8 +52,8 @@ headers = {
 #  ]
 # }
 
-steamhistory_api_key = "1NNX5J9E5OLVAJIU2DTDDSUU21H3H37P"
-get_sourcebans = "https://steamhistory.net/api/sourcebans?key=1NNX5J9E5OLVAJIU2DTDDSUU21H3H37P&shouldkey=0&steamids={steamids}"
+steamhistory_api_key = ""
+get_sourcebans = "https://steamhistory.net/api/sourcebans?key=key&shouldkey=0&steamids={steamids}"
 
 
 async def get_steam_profile_name(steamid64):
